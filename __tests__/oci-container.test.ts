@@ -3,21 +3,22 @@ import { FileMetadata } from '../src/fs-helper'
 
 describe('createActionPackageManigest', () => {
   it('creates a manifest containing the provided information', () => {
-    let date = new Date()
-    let repo = 'test-repo'
-    let version = '1.0.0'
-    let tarFile: FileMetadata = {
+    const date = new Date()
+    const repo = 'test-org/test-repo'
+    const sanitizedRepo = 'test-org-test-repo'
+    const version = '1.0.0'
+    const tarFile: FileMetadata = {
       path: '/test/test/test',
       sha256: '1234567890',
       size: 100
     }
-    let zipFile: FileMetadata = {
+    const zipFile: FileMetadata = {
       path: '/test/test/test',
       sha256: '1234567890',
       size: 100
     }
 
-    let expectedJSON: String = `{
+    const expectedJSON = `{
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "artifactType": "application/vnd.oci.image.manifest.v1+json",
@@ -43,7 +44,7 @@ describe('createActionPackageManigest', () => {
                     "size":${tarFile.size},
                     "digest":"${tarFile.sha256}",
                     "annotations":{
-                        "org.opencontainers.image.title":"${repo}-${version}.tar.gz"
+                        "org.opencontainers.image.title":"${sanitizedRepo}_${version}.tar.gz"
                     }
                 },
                 {
@@ -51,7 +52,7 @@ describe('createActionPackageManigest', () => {
                     "size":${tarFile.size},
                     "digest":"${tarFile.sha256}",
                     "annotations":{
-                        "org.opencontainers.image.title":"${repo}-${version}.zip"
+                        "org.opencontainers.image.title":"${sanitizedRepo}_${version}.zip"
                     }
                 }
             ],
@@ -63,7 +64,7 @@ describe('createActionPackageManigest', () => {
             }
         }`
 
-    let manifest = createActionPackageManifest(
+    const manifest = createActionPackageManifest(
       {
         path: 'test.tar.gz',
         size: 100,
@@ -74,12 +75,12 @@ describe('createActionPackageManigest', () => {
         size: 100,
         sha256: '1234567890'
       },
-      'test-repo',
-      '1.0.0',
+      repo,
+      version,
       date
     )
 
-    let manifestJSON = JSON.stringify(manifest)
+    const manifestJSON = JSON.stringify(manifest)
     expect(manifestJSON).toEqual(expectedJSON.replace(/\s/g, ''))
   })
 })

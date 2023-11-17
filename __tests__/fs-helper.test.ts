@@ -41,8 +41,8 @@ describe('createArchives', () => {
     expect(tarFile.sha256.startsWith('sha256:')).toEqual(true)
 
     // Validate the hashes by comparing to the output of the system's hashing utility
-    let zipSHA = zipFile.sha256.substring(7) // remove "sha256:" prefix
-    let tarSHA = tarFile.sha256.substring(7) // remove "sha256:" prefix
+    const zipSHA = zipFile.sha256.substring(7) // remove "sha256:" prefix
+    const tarSHA = tarFile.sha256.substring(7) // remove "sha256:" prefix
 
     // sha256 hash is 64 characters long
     expect(zipSHA).toHaveLength(64)
@@ -86,13 +86,13 @@ describe('createTempDir', () => {
   })
 
   afterEach(() => {
-    dirs.forEach(dir => {
+    for (const dir of dirs) {
       fs.rmSync(dir, { recursive: true })
-    })
+    }
   })
 
   it('creates a temporary directory in the OS temporary dir', () => {
-    let tmpDir = fsHelper.createTempDir()
+    const tmpDir = fsHelper.createTempDir()
     dirs.push(tmpDir)
 
     expect(fs.existsSync(tmpDir)).toEqual(true)
@@ -101,10 +101,10 @@ describe('createTempDir', () => {
   })
 
   it('creates a unique temporary directory', () => {
-    let dir1 = fsHelper.createTempDir()
+    const dir1 = fsHelper.createTempDir()
     dirs.push(dir1)
 
-    let dir2 = fsHelper.createTempDir()
+    const dir2 = fsHelper.createTempDir()
     dirs.push(dir2)
 
     expect(dir1).not.toEqual(dir2)
@@ -168,5 +168,49 @@ describe('removeDir', () => {
   it('removes a directory', () => {
     fsHelper.removeDir(dir)
     expect(fs.existsSync(dir)).toEqual(false)
+  })
+})
+
+describe('bundleFilesintoDirectory', () => {
+  let sourceDir: string
+  let targetDir: string
+
+  beforeEach(() => {
+    sourceDir = fsHelper.createTempDir()
+    targetDir = fsHelper.createTempDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(sourceDir, { recursive: true })
+    fs.rmSync(targetDir, { recursive: true })
+  })
+
+  it('bundles files and folders into a directory', () => {
+    // Create some test files and folders in the sourceDir
+    const file1 = `${sourceDir}/file1.txt`
+    const folder1 = `${sourceDir}/folder1`
+    const file2 = `${folder1}/file3.txt`
+
+    fs.mkdirSync(folder1)
+    fs.writeFileSync(file1, fileContent)
+    fs.writeFileSync(file2, fileContent)
+
+    // Bundle the files and folders into the targetDir
+    fsHelper.bundleFilesintoDirectory([file1, folder1], targetDir)
+
+    // Check that the files and folders were copied
+    expect(fs.existsSync(file1)).toEqual(true)
+    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
+
+    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
+
+    expect(fs.existsSync(file2)).toEqual(true)
+    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
+  })
+
+  it('throws an error if a file or directory does not exist', () => {
+    expect(() => {
+      fsHelper.bundleFilesintoDirectory(['/does/not/exist'], targetDir)
+    }).toThrow('File /does/not/exist does not exist')
   })
 })

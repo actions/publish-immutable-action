@@ -1,6 +1,5 @@
 import { publishOCIArtifact } from '../src/ghcr-client'
-import axios, { AxiosRequestConfig } from 'axios'
-import * as fs from 'fs'
+import axios from 'axios'
 import * as fsHelper from '../src/fs-helper'
 import * as ociContainer from '../src/oci-container'
 
@@ -89,14 +88,12 @@ describe('publishOCIArtifact', () => {
 
   it('publishes layer blobs & then a manifest to the provided registry', async () => {
     // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(
-      async (url: string, config: AxiosRequestConfig) => {
-        validateRequestConfig(404, url, config)
-        return {
-          status: 404
-        }
+    axiosHeadMock.mockImplementation(async (url, config) => {
+      validateRequestConfig(404, url, config)
+      return {
+        status: 404
       }
-    )
+    })
 
     // Simulate successful initiation of uploads for all blobs & return location
     axiosPostMock.mockImplementation(async (url, data, config) => {
@@ -110,7 +107,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
     })
 
@@ -161,7 +158,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
     })
 
@@ -199,7 +196,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -230,7 +227,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -262,7 +259,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -297,7 +294,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
     })
 
@@ -309,7 +306,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -344,7 +341,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
     })
 
@@ -363,7 +360,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -398,7 +395,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(path => {
+    fsReadFileSyncMock.mockImplementation(() => {
       throw new Error('failed to read a file: test')
     })
 
@@ -410,7 +407,7 @@ describe('publishOCIArtifact', () => {
       }
     })
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -425,10 +422,10 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if one of the layers has the wrong media type', async () => {
-    let modifiedTestManifest = testManifest
+    const modifiedTestManifest = testManifest
     modifiedTestManifest.layers[0].mediaType = 'application/json'
 
-    expect(
+    await expect(
       publishOCIArtifact(
         token,
         registry,
@@ -445,11 +442,8 @@ describe('publishOCIArtifact', () => {
 
 // We expect all axios calls to have auth headers set and to not intercept any status codes so we can handle them.
 // This function verifies that given an axios request config.
-function validateRequestConfig(
-  status: number,
-  url: string,
-  config: AxiosRequestConfig
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function validateRequestConfig(status: number, url: string, config: any): void {
   // Basic URL checks
   expect(url).toBeDefined()
 

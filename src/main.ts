@@ -4,14 +4,13 @@ import * as fsHelper from './fs-helper'
 import * as ociContainer from './oci-container'
 import * as ghcr from './ghcr-client'
 import semver from 'semver'
-import { url } from 'inspector'
 
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 export async function run(): Promise<void> {
-  let tmpDir: string = ''
+  const tmpDirs: string[] = []
 
   try {
     // Parse and validate Actions execution context, including the repository name, release name and event type
@@ -29,8 +28,9 @@ export async function run(): Promise<void> {
 
     // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
     // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
-    let targetVersion = semver.parse(releaseTag.replace(/^v/, ''))
+    const targetVersion = semver.parse(releaseTag.replace(/^v/, ''))
     if (!targetVersion) {
+      // TODO: We may want to limit semvers to only x.x.x, without the pre-release tags, but for now we'll allow them.
       core.setFailed(
         `${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
       )
@@ -39,20 +39,27 @@ export async function run(): Promise<void> {
 
     // Gather & validate user inputs
     const token: string = core.getInput('token')
-    const path: string = core.getInput('path')
     const registryURL: URL = new URL(core.getInput('registry')) // TODO: Should this be dynamic? Maybe an API endpoint to grab the registry for GHES/proxima purposes.
 
-    if (!fsHelper.isDirectory(path)) {
-      core.setFailed(
-        `The path ${path} is not a directory. Please provide a path to a valid directory.`
-      )
-      return
+    // Paths to be included in the OCI image
+    const paths: string[] = core.getInput('path').split(' ')
+    let path = ''
+
+    if (paths.length === 1 && fsHelper.isDirectory(paths[0])) {
+      // If the path is a single directory, we can skip the bundling step
+      path = paths[0]
+    } else {
+      // Otherwise, we need to bundle the files & folders into a temporary directory
+      const bundleDir = fsHelper.createTempDir()
+      tmpDirs.push(bundleDir)
+      path = fsHelper.bundleFilesintoDirectory(paths, bundleDir)
     }
 
     // Create a temporary directory to store the archives
-    tmpDir = fsHelper.createTempDir()
+    const archiveDir = fsHelper.createTempDir()
+    tmpDirs.push(archiveDir)
 
-    const archives = await fsHelper.createArchives(path)
+    const archives = await fsHelper.createArchives(path, archiveDir)
 
     const manifest = ociContainer.createActionPackageManifest(
       archives.tarFile,
@@ -62,7 +69,7 @@ export async function run(): Promise<void> {
       new Date()
     )
 
-    let packageURL = await ghcr.publishOCIArtifact(
+    const packageURL = await ghcr.publishOCIArtifact(
       token,
       registryURL,
       repository,
@@ -84,9 +91,11 @@ export async function run(): Promise<void> {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   } finally {
-    // Clean up the temporary directory if it exists
-    if (tmpDir !== '') {
-      fsHelper.removeDir(tmpDir)
+    // Clean up any temporary directories that exist
+    for (const tmpDir of tmpDirs) {
+      if (tmpDir !== '') {
+        fsHelper.removeDir(tmpDir)
+      }
     }
   }
 }

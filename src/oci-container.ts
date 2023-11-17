@@ -1,4 +1,3 @@
-import { Tracing } from 'trace_events'
 import { FileMetadata } from './fs-helper'
 
 export interface Manifest {
@@ -7,14 +6,14 @@ export interface Manifest {
   artifactType: string
   config: Layer
   layers: Layer[]
-  annotations: {}
+  annotations: { [key: string]: string }
 }
 
 export interface Layer {
   mediaType: string
   size: number
   digest: string
-  annotations: {}
+  annotations: { [key: string]: string }
 }
 
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.
@@ -26,8 +25,9 @@ export function createActionPackageManifest(
   created: Date
 ): Manifest {
   const configLayer = createConfigLayer()
-  const tarLayer = createTarLayer(tarFile, repository, version)
-  const zipLayer = createZipLayer(zipFile, repository, version)
+  const sanitizedRepo = sanitizeRepository(repository)
+  const tarLayer = createTarLayer(tarFile, sanitizedRepo, version)
+  const zipLayer = createZipLayer(zipFile, sanitizedRepo, version)
 
   const manifest: Manifest = {
     schemaVersion: 2,
@@ -71,7 +71,7 @@ function createZipLayer(
     size: zipFile.size,
     digest: zipFile.sha256,
     annotations: {
-      'org.opencontainers.image.title': `${repository}-${version}.zip`
+      'org.opencontainers.image.title': `${repository}_${version}.zip`
     }
   }
 
@@ -88,9 +88,15 @@ function createTarLayer(
     size: tarFile.size,
     digest: tarFile.sha256,
     annotations: {
-      'org.opencontainers.image.title': `${repository}-${version}.tar.gz`
+      'org.opencontainers.image.title': `${repository}_${version}.tar.gz`
     }
   }
 
   return tarLayer
+}
+
+// Remove slashes so we can use the repository in a filename
+// repository usually includes the namespace too, e.g. my-org/my-repo
+function sanitizeRepository(repository: string): string {
+  return repository.replace('/', '-')
 }
