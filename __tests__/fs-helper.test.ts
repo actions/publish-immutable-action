@@ -41,8 +41,8 @@ describe('createArchives', () => {
     expect(tarFile.sha256.startsWith('sha256:')).toEqual(true)
 
     // Validate the hashes by comparing to the output of the system's hashing utility
-    let zipSHA = zipFile.sha256.substring(7) // remove "sha256:" prefix
-    let tarSHA = tarFile.sha256.substring(7) // remove "sha256:" prefix
+    const zipSHA = zipFile.sha256.substring(7) // remove "sha256:" prefix
+    const tarSHA = tarFile.sha256.substring(7) // remove "sha256:" prefix
 
     // sha256 hash is 64 characters long
     expect(zipSHA).toHaveLength(64)
@@ -86,13 +86,13 @@ describe('createTempDir', () => {
   })
 
   afterEach(() => {
-    dirs.forEach(dir => {
+    for (const dir of dirs) {
       fs.rmSync(dir, { recursive: true })
-    })
+    }
   })
 
   it('creates a temporary directory in the OS temporary dir', () => {
-    let tmpDir = fsHelper.createTempDir()
+    const tmpDir = fsHelper.createTempDir()
     dirs.push(tmpDir)
 
     expect(fs.existsSync(tmpDir)).toEqual(true)
@@ -101,10 +101,10 @@ describe('createTempDir', () => {
   })
 
   it('creates a unique temporary directory', () => {
-    let dir1 = fsHelper.createTempDir()
+    const dir1 = fsHelper.createTempDir()
     dirs.push(dir1)
 
-    let dir2 = fsHelper.createTempDir()
+    const dir2 = fsHelper.createTempDir()
     dirs.push(dir2)
 
     expect(dir1).not.toEqual(dir2)

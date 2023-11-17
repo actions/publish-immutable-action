@@ -1,6 +1,5 @@
 import { publishOCIArtifact } from '../src/ghcr-client'
 import axios, { AxiosRequestConfig } from 'axios'
-import * as fs from 'fs'
 import * as fsHelper from '../src/fs-helper'
 import * as ociContainer from '../src/oci-container'
 
@@ -110,7 +109,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(async _ => {
       return Buffer.from('test')
     })
 
@@ -161,7 +160,7 @@ describe('publishOCIArtifact', () => {
     })
 
     // Simulate successful reading of all the files
-    fsReadFileSyncMock.mockImplementation(async path => {
+    fsReadFileSyncMock.mockImplementation(async _ => {
       return Buffer.from('test')
     })
 
