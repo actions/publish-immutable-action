@@ -72631,7 +72631,7 @@ async function createArchives(distPath, archiveTargetPath = createTempDir()) {
         tar
             .c({
             file: tarPath,
-            C: distPath,
+            C: distPath, // Change to the source directory for relative paths (TODO)
             gzip: true
         }, ['.'])
             // eslint-disable-next-line github/no-then
@@ -72797,7 +72797,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         headers: {
             Authorization: `Bearer ${b64Token}`,
             'Content-Type': 'application/octet-stream',
-            'Accept-Encoding': 'gzip',
+            'Accept-Encoding': 'gzip', // TODO: What about for the config layer?
             'Content-Length': layer.size.toString()
         },
         validateStatus: () => {
