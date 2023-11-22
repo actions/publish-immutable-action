@@ -35,43 +35,53 @@ export async function createArchives(
   const zipPath = path.join(archiveTargetPath, `archive.zip`)
   const tarPath = path.join(archiveTargetPath, `archive.tar.gz`)
 
-  return Promise.all([
-    new Promise<FileMetadata>((resolve, reject) => {
-      const output = fs.createWriteStream(zipPath)
-      const archive = archiver.create('zip')
+  const createZipPromise = new Promise<FileMetadata>((resolve, reject) => {
+    const output = fs.createWriteStream(zipPath)
+    const archive = archiver.create('zip')
 
-      output.on('error', (err: Error) => {
-        reject(err)
-      })
-
-      archive.on('error', (err: Error) => {
-        reject(err)
-      })
-
-      output.on('close', () => {
-        resolve(fileMetadata(zipPath))
-      })
-
-      archive.pipe(output)
-      archive.directory(distPath, false)
-      archive.finalize()
-    }),
-    new Promise<FileMetadata>((resolve, reject) => {
-      tar
-        .c(
-          {
-            file: tarPath,
-            C: distPath, // Change to the source directory for relative paths (TODO)
-            gzip: true
-          },
-          ['.']
-        )
-        .then(() => {
-          resolve(fileMetadata(tarPath))
-        })
-        .catch((err: Error) => reject(err))
+    output.on('error', (err: Error) => {
+      reject(err)
     })
-  ]).then(([zipFile, tarFile]) => ({ zipFile, tarFile }))
+
+    archive.on('error', (err: Error) => {
+      reject(err)
+    })
+
+    output.on('close', () => {
+      resolve(fileMetadata(zipPath))
+    })
+
+    archive.pipe(output)
+    archive.directory(distPath, false)
+    archive.finalize()
+  })
+
+  const createTarPromise = new Promise<FileMetadata>((resolve, reject) => {
+    tar
+      .c(
+        {
+          file: tarPath,
+          C: distPath, // Change to the source directory for relative paths (TODO)
+          gzip: true
+        },
+        ['.']
+      )
+      // eslint-disable-next-line github/no-then
+      .catch(err => {
+        reject(err)
+      })
+      // eslint-disable-next-line github/no-then
+      .then(() => {
+        resolve(fileMetadata(tarPath))
+      })
+  })
+
+  const [zipFile, tarFile] = await Promise.all([
+    createZipPromise,
+    createTarPromise
+  ])
+
+  return { zipFile, tarFile }
 }
 
 export function isDirectory(dirPath: string): boolean {
