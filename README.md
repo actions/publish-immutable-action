@@ -64,14 +64,10 @@ The key differences are:
 These are some features which should likely be part of this implementation.
 
 - [ ] Parsing SemVer more strictly, based on what formats we decide to support (e.g. we might not support prerelease tags)
-- [ ] Supporting the `path` argument containing more than one filepath so files can be specified (see [tar-helper.ts](https://github.com/actions-on-packages/package-action/blob/main/src/tar-helper.ts#L16))
-  - I'd suggest a separate function to prepare a folder with all the requested items in it to main
-  - e.g. `const dir = fsHelper.bundleFilesInTmpDir(paths)`
-  - This would no-op if a simple dir is passed in, and just pass the same dir path back after validating it
 - [ ] Checking that there is a valid `action.yml` file in the repository running the action, failing if it is not an Action repository
-  - Could be as simple as just checking for the file, or could be validating it is yml with expected actions components 
+  - Could be as simple as just checking for the file, or could be validating it is yml with expected actions components
 - [ ] Sanitising and validating relative paths passed into the `path` arg
-  - This could be handled as part of the multiple path support part 
+  - For example, checking that they're inside the repository of the action and not other places on the filsystem
 - [ ] Integration with Attestations API (speak to `phillmv` about this)
 - [ ] A way to dynamically work out the Container Registry's URL rather than relying on the user to provide it
   - Options seem to be an API endpoint or an environment variable in the runner, but this might be difficult for backwards compatibility
