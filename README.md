@@ -58,3 +58,13 @@ The key differences are:
 - This Action creates and publishes the OCI manifest which houses those archives, which was previously done on the backend.
 - This Action has the goal of generating provenance attestations for any release that is created.
 - This Action parses and validates that the release tag which triggered it is in a valid SemVer format, either `1.0.3-prerelease` or `v1.0.0-prerelease`.
+
+## [Internal] Features to consider adding to this Action
+
+These are some features which should likely be part of this implementation.
+
+- [ ] Parsing SemVer more strictly, based on what formats we decide to support (e.g. we might not support pre-release tags)
+- [ ] Supporting the `path` argument containing more than one filepath so files can be specified (see [tar-helper.ts](https://github.com/actions-on-packages/package-action/blob/main/src/tar-helper.ts#L16))
+- [ ] Checking that there is a valid `action.yml` file in the repo running the action, failing if it is not an Action repo
+- [ ] Sanitising and validating relative paths passed into the `path` arg.
+- [ ] Integration with Attestations API (speak to `phillmv` about this)
