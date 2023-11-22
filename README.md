@@ -57,4 +57,4 @@ The key differences are:
 - This Action uses Node.js libraries to create both a `zip` and `tar.gz` of the content as layers.
 - This Action creates and publishes the OCI manifest which houses those archives, which was previously done on the backend.
 - This Action has the goal of generating provenance attestations for any release that is created.
-- This Action parses and validates that the release tag which triggered it is in a valid semver format, either `1.0.3-prerelease` or `v1.0.0-prerelease`.
+- This Action parses and validates that the release tag which triggered it is in a valid SemVer format, either `1.0.3-prerelease` or `v1.0.0-prerelease`.
