@@ -4,14 +4,13 @@ import * as fsHelper from './fs-helper'
 import * as ociContainer from './oci-container'
 import * as ghcr from './ghcr-client'
 import semver from 'semver'
-import { url } from 'inspector'
 
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 export async function run(): Promise<void> {
-  let tmpDir: string = ''
+  let tmpDir = ''
 
   try {
     // Parse and validate Actions execution context, including the repository name, release name and event type
@@ -29,7 +28,7 @@ export async function run(): Promise<void> {
 
     // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
     // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
-    let targetVersion = semver.parse(releaseTag.replace(/^v/, ''))
+    const targetVersion = semver.parse(releaseTag.replace(/^v/, ''))
     if (!targetVersion) {
       core.setFailed(
         `${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
@@ -62,7 +61,7 @@ export async function run(): Promise<void> {
       new Date()
     )
 
-    let packageURL = await ghcr.publishOCIArtifact(
+    const packageURL = await ghcr.publishOCIArtifact(
       token,
       registryURL,
       repository,

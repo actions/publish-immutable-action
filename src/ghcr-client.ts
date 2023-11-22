@@ -2,9 +2,6 @@ import * as core from '@actions/core'
 import { FileMetadata } from './fs-helper'
 import * as ociContainer from './oci-container'
 import axios from 'axios'
-import { fieldEnds } from 'tar'
-import * as fs from 'fs'
-import { promiseHooks } from 'v8'
 import * as fsHelper from './fs-helper'
 import axiosDebugLog from 'axios-debug-log'
 
@@ -18,7 +15,7 @@ export async function publishOCIArtifact(
   zipFile: FileMetadata,
   tarFile: FileMetadata,
   manifest: ociContainer.Manifest,
-  debugRequests: boolean = false
+  debugRequests = false
 ): Promise<URL> {
   if (debugRequests) {
     configureRequestDebugLogging()
@@ -43,7 +40,7 @@ export async function publishOCIArtifact(
     `Creating GHCR package for release with semver:${semver} with path:"${zipFile.path}" and "${tarFile.path}".`
   )
 
-  let layerUploads: Promise<void>[] = manifest.layers.map(layer => {
+  const layerUploads: Promise<void>[] = manifest.layers.map(async layer => {
     switch (layer.mediaType) {
       case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
         return uploadLayer(
@@ -98,7 +95,7 @@ async function uploadLayer(
       headers: {
         Authorization: `Bearer ${b64Token}`
       },
-      validateStatus: function (status: number) {
+      validateStatus: () => {
         return true // Allow non 2xx responses
       }
     }
@@ -124,12 +121,12 @@ async function uploadLayer(
     headers: {
       Authorization: `Bearer ${b64Token}`
     },
-    validateStatus: function (status: number) {
+    validateStatus: () => {
       return true // Allow non 2xx responses
     }
   })
 
-  if (initiateUploadResponse.status != 202) {
+  if (initiateUploadResponse.status !== 202) {
     core.error(
       `Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`
     )
@@ -139,17 +136,17 @@ async function uploadLayer(
   }
 
   const locationResponseHeader = initiateUploadResponse.headers['location']
-  if (locationResponseHeader == undefined) {
+  if (locationResponseHeader === undefined) {
     throw new Error(
       `No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`
     )
   }
 
-  let pathname = (locationResponseHeader as string) + '?digest=' + layer.digest
+  const pathname = `${locationResponseHeader}?digest=${layer.digest}`
   const uploadBlobUrl = new URL(pathname, registryURL).toString()
 
   // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
-  var data: Buffer
+  let data: Buffer
   if (file.size === 0) {
     data = Buffer.alloc(0)
   } else {
@@ -163,12 +160,12 @@ async function uploadLayer(
       'Accept-Encoding': 'gzip', // TODO: What about for the config layer?
       'Content-Length': layer.size.toString()
     },
-    validateStatus: function (status: number) {
+    validateStatus: () => {
       return true // Allow non 2xx responses
     }
   })
 
-  if (putResponse.status != 201) {
+  if (putResponse.status !== 201) {
     throw new Error(
       `Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`
     )
@@ -187,27 +184,27 @@ async function uploadManifest(
       Authorization: `Bearer ${b64Token}`,
       'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
     },
-    validateStatus: function (status: number) {
+    validateStatus: () => {
       return true // Allow non 2xx responses
     }
   })
 
-  if (putResponse.status != 201) {
+  if (putResponse.status !== 201) {
     throw new Error(
       `Unexpected response from PUT manifest ${putResponse.status}`
     )
   }
 }
 
-function configureRequestDebugLogging() {
+function configureRequestDebugLogging(): void {
   axiosDebugLog({
-    request: function (debug, config) {
+    request: (debug, config) => {
       core.debug(`Request with ${config}`)
     },
-    response: function (debug, response) {
+    response: (debug, response) => {
       core.debug(`Response with ${response}`)
     },
-    error: function (debug, error) {
+    error: (debug, error) => {
       core.debug(`Error with ${error}`)
     }
   })

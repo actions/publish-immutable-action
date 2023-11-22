@@ -11,15 +11,9 @@ import * as main from '../src/main'
 import * as github from '@actions/github'
 
 import * as fsHelper from '../src/fs-helper'
-import * as ociContainer from '../src/oci-container'
 import * as ghcr from '../src/ghcr-client'
 
-// Mock the action's main function
-const runMock = jest.spyOn(main, 'run')
-
 // Mock the GitHub Actions core library
-let debugMock: jest.SpyInstance
-let errorMock: jest.SpyInstance
 let getInputMock: jest.SpyInstance
 let setFailedMock: jest.SpyInstance
 let setOutputMock: jest.SpyInstance
@@ -38,8 +32,6 @@ describe('action', () => {
     jest.clearAllMocks()
 
     // Core mocks
-    debugMock = jest.spyOn(core, 'debug').mockImplementation()
-    errorMock = jest.spyOn(core, 'error').mockImplementation()
     getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
     setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
     setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation()

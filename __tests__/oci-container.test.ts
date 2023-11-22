@@ -3,21 +3,21 @@ import { FileMetadata } from '../src/fs-helper'
 
 describe('createActionPackageManigest', () => {
   it('creates a manifest containing the provided information', () => {
-    let date = new Date()
-    let repo = 'test-repo'
-    let version = '1.0.0'
-    let tarFile: FileMetadata = {
+    const date = new Date()
+    const repo = 'test-repo'
+    const version = '1.0.0'
+    const tarFile: FileMetadata = {
       path: '/test/test/test',
       sha256: '1234567890',
       size: 100
     }
-    let zipFile: FileMetadata = {
+    const zipFile: FileMetadata = {
       path: '/test/test/test',
       sha256: '1234567890',
       size: 100
     }
 
-    let expectedJSON: String = `{
+    const expectedJSON = `{
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "artifactType": "application/vnd.oci.image.manifest.v1+json",
@@ -63,7 +63,7 @@ describe('createActionPackageManigest', () => {
             }
         }`
 
-    let manifest = createActionPackageManifest(
+    const manifest = createActionPackageManifest(
       {
         path: 'test.tar.gz',
         size: 100,
@@ -79,7 +79,7 @@ describe('createActionPackageManigest', () => {
       date
     )
 
-    let manifestJSON = JSON.stringify(manifest)
+    const manifestJSON = JSON.stringify(manifest)
     expect(manifestJSON).toEqual(expectedJSON.replace(/\s/g, ''))
   })
 })

@@ -1,4 +1,3 @@
-import { Tracing } from 'trace_events'
 import { FileMetadata } from './fs-helper'
 
 export interface Manifest {
@@ -7,14 +6,14 @@ export interface Manifest {
   artifactType: string
   config: Layer
   layers: Layer[]
-  annotations: {}
+  annotations: { [key: string]: string }
 }
 
 export interface Layer {
   mediaType: string
   size: number
   digest: string
-  annotations: {}
+  annotations: { [key: string]: string }
 }
 
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.

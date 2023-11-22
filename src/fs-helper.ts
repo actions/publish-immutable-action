@@ -1,14 +1,11 @@
-import * as core from '@actions/core'
-import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as tar from 'tar'
 import * as archiver from 'archiver'
 import * as crypto from 'crypto'
 import * as os from 'os'
-import * as zlib from 'zlib'
 
-export function createTempDir() {
+export function createTempDir(): string {
   const randomDirName = crypto.randomBytes(4).toString('hex')
   const tempDir = path.join(os.tmpdir(), randomDirName)
 
@@ -19,7 +16,7 @@ export function createTempDir() {
   return tempDir
 }
 
-export function removeDir(dir: string) {
+export function removeDir(dir: string): void {
   fs.rmSync(dir, { recursive: true })
 }
 
@@ -60,7 +57,7 @@ export async function createArchives(
       archive.finalize()
     }),
     new Promise<FileMetadata>((resolve, reject) => {
-      const tarStream = tar
+      tar
         .c(
           {
             file: tarPath,
@@ -77,20 +74,20 @@ export async function createArchives(
   ]).then(([zipFile, tarFile]) => ({ zipFile, tarFile }))
 }
 
-export function isDirectory(path: string): boolean {
-  return fs.existsSync(path) && fs.lstatSync(path).isDirectory()
+export function isDirectory(dirPath: string): boolean {
+  return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory()
 }
 
-export function readFileContents(path: string): Buffer {
-  return fs.readFileSync(path)
+export function readFileContents(filePath: string): Buffer {
+  return fs.readFileSync(filePath)
 }
 
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
-async function fileMetadata(path: string): Promise<FileMetadata> {
-  const stats = fs.statSync(path)
+async function fileMetadata(filePath: string): Promise<FileMetadata> {
+  const stats = fs.statSync(filePath)
   const size = stats.size
   const hash = crypto.createHash('sha256')
-  const fileStream = fs.createReadStream(path)
+  const fileStream = fs.createReadStream(filePath)
   return new Promise((resolve, reject) => {
     fileStream.on('data', data => {
       hash.update(data)
@@ -98,9 +95,9 @@ async function fileMetadata(path: string): Promise<FileMetadata> {
     fileStream.on('end', () => {
       const sha256 = hash.digest('hex')
       resolve({
-        path: path,
-        size: size,
-        sha256: 'sha256:' + sha256
+        path: filePath,
+        size,
+        sha256: `sha256:${sha256}`
       })
     })
     fileStream.on('error', err => {
