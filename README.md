@@ -1,16 +1,15 @@
-<p align="center">
-  <a href="https://github.com/ruchika-org/package-action"></a>
-</p>
+# Publish Action Package
 
-# Package and Publish
+This action packages your action repository as OCI artifacts and publishes it to [GHCR](ghcr.io).
 
-This action packages your action repository as OCI artifacts and publishes it to [GHCR](ghcr.io), so your action can then be consumed as a package to make the actions ecosystem more secure.
+This allows your action to be consumed as an immutable package to make the actions ecosystem more secure.
 
-The whole action repository is packaged by default. Set `path` input to specify which path you want to package if you want only a few folders (for eg. dist) to be packaged.
+The whole action repository is packaged by default. Set `path` input to specify which path you want to package.
 
-Make sure you use the [Starter Workflow] (https://github.com/actions-on-packages/.github) (TODO) to run the action and ensure you have the release trigger in the workflow where you use this action.
+Make sure you use the [Starter Workflow](https://github.com/actions-on-packages/.github) (TODO) to run the action.
+Please also ensure you have the release trigger in the workflow where you use this action.
 
-# Usage
+## Usage
 
 <!-- start usage -->
 ```yaml
@@ -42,19 +41,20 @@ on:
 ```
 <!-- end usage -->
 
-# License
+## License
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
 
+## [Internal] Differences from previous implementation
 
-# [Internal] Differences from previous implementation
+This is a new implementation of an Action which publishes a given release to ghcr.io (GitHub Packages).
 
-This is a new implementation of an Action which publishes a given release to ghcr.io (GitHub Packages). It will eventually be moved to https://github.com/actions-on-packages/package-action and replace the existing implementation.
+It will eventually be moved to our `actions`` org.
 
 The key differences are:
-* This Action goes directly to GitHub Packages rather than using an API endpoint to pass a bundle to.
-* This Action uses Node.js libraries to create both a `zip` and `tar.gz` of the content as layers.
-* This Action creates and publishes the OCI manifest which houses those archives, which was previously done on the backend.
-* This Action has the goal of generating provenance attestations for any release that is created.
-* This Action parses and validates that the release tag which triggered it is in a valid semver format, either `1.0.3-prerelease` or `v1.0.0-prerelease`.
 
+- This Action goes directly to GitHub Packages rather than using an API endpoint to pass a bundle to.
+- This Action uses Node.js libraries to create both a `zip` and `tar.gz` of the content as layers.
+- This Action creates and publishes the OCI manifest which houses those archives, which was previously done on the backend.
+- This Action has the goal of generating provenance attestations for any release that is created.
+- This Action parses and validates that the release tag which triggered it is in a valid semver format, either `1.0.3-prerelease` or `v1.0.0-prerelease`.

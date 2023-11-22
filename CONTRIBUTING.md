@@ -1,4 +1,4 @@
-## Initial Setup
+# Initial Setup
 
 After you've cloned the repository to your local machine or codespace, you'll
 need to perform some initial setup steps before you can develop your action.
