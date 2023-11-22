@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import fsExtra from 'fs-extra'
 import * as path from 'path'
 import * as tar from 'tar'
 import * as archiver from 'archiver'
@@ -17,7 +18,9 @@ export function createTempDir(): string {
 }
 
 export function removeDir(dir: string): void {
-  fs.rmSync(dir, { recursive: true })
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true })
+  }
 }
 
 export interface FileMetadata {
@@ -90,6 +93,27 @@ export function isDirectory(dirPath: string): boolean {
 
 export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
+}
+
+export function bundleFilesintoDirectory(
+  files: string[],
+  targetDir: string = createTempDir()
+): string {
+  for (const file of files) {
+    if (!fs.existsSync(file)) {
+      throw new Error(`File ${file} does not exist`)
+    }
+
+    if (isDirectory(file)) {
+      const targetFolder = path.join(targetDir, path.basename(file))
+      fsExtra.copySync(file, targetFolder)
+    } else {
+      const targetFile = path.join(targetDir, path.basename(file))
+      fs.copyFileSync(file, targetFile)
+    }
+  }
+
+  return targetDir
 }
 
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.

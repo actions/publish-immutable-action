@@ -170,3 +170,47 @@ describe('removeDir', () => {
     expect(fs.existsSync(dir)).toEqual(false)
   })
 })
+
+describe('bundleFilesintoDirectory', () => {
+  let sourceDir: string
+  let targetDir: string
+
+  beforeEach(() => {
+    sourceDir = fsHelper.createTempDir()
+    targetDir = fsHelper.createTempDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(sourceDir, { recursive: true })
+    fs.rmSync(targetDir, { recursive: true })
+  })
+
+  it('bundles files and folders into a directory', () => {
+    // Create some test files and folders in the sourceDir
+    const file1 = `${sourceDir}/file1.txt`
+    const folder1 = `${sourceDir}/folder1`
+    const file2 = `${folder1}/file3.txt`
+
+    fs.mkdirSync(folder1)
+    fs.writeFileSync(file1, fileContent)
+    fs.writeFileSync(file2, fileContent)
+
+    // Bundle the files and folders into the targetDir
+    fsHelper.bundleFilesintoDirectory([file1, folder1], targetDir)
+
+    // Check that the files and folders were copied
+    expect(fs.existsSync(file1)).toEqual(true)
+    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
+
+    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
+
+    expect(fs.existsSync(file2)).toEqual(true)
+    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
+  })
+
+  it('throws an error if a file or directory does not exist', () => {
+    expect(() => {
+      fsHelper.bundleFilesintoDirectory(['/does/not/exist'], targetDir)
+    }).toThrow('File /does/not/exist does not exist')
+  })
+})
