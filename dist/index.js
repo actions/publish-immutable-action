@@ -72902,6 +72902,7 @@ async function run() {
         // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
         const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
         if (!targetVersion) {
+            // TODO: We may want to limit semvers to only x.x.x, without the pre-release tags, but for now we'll allow them.
             core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
             return;
         }

@@ -166,77 +166,86 @@ describe('action', () => {
     expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
   })
 
-  it('uploads and returns the manifest & package URL if all succeeds', async () => {
-    // Mock the environment
-    process.env.GITHUB_REPOSITORY = 'test/test'
-    github.context.eventName = 'release'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.0.0'
-      }
-    }
-    getInputMock.mockImplementation((name: string) => {
-      if (name === 'path') {
-        return 'test'
-      } else if (name === 'registry') {
-        return 'https://ghcr.io'
-      }
-      return ''
-    })
+  it('successfully uploads if the release tag is a semver without v prefix', async () => {
+    await testHappyPath('1.0.0')
+  })
 
-    isDirectoryMock.mockImplementation(() => true)
-
-    createTempDirMock.mockImplementation(() => '/tmp/test')
-
-    createArchivesMock.mockImplementation(() => {
-      return {
-        zipFile: {
-          path: 'test',
-          size: 5,
-          sha256: '123'
-        },
-        tarFile: {
-          path: 'test2',
-          size: 52,
-          sha256: '1234'
-        }
-      }
-    })
-
-    publishOCIArtifactMock.mockImplementation(() => {
-      return new URL('https://ghcr.io/v2/test/test:1.0.0')
-    })
-
-    // Run the action
-    await main.run()
-
-    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
-
-    // Check manifest is in output
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'package-url',
-      'https://ghcr.io/v2/test/test:1.0.0'
-    )
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'package-manifest',
-      expect.any(String)
-    )
-
-    // Validate the manifest
-    const manifest = JSON.parse(setOutputMock.mock.calls[1][1])
-    expect(manifest.mediaType).toEqual(
-      'application/vnd.oci.image.manifest.v1+json'
-    )
-    expect(manifest.config.mediaType).toEqual(
-      'application/vnd.github.actions.package.config.v1+json'
-    )
-    expect(manifest.layers.length).toEqual(3)
-    expect(manifest.annotations['com.github.package.type']).toEqual(
-      'actions_oci_pkg'
-    )
-
-    // Expect the files to be cleaned up
-    expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
+  it('successfully uploads if the release tag is a semver with v prefix', async () => {
+    await testHappyPath('v1.0.0')
   })
 })
+
+// Test that main successfully uploads and returns the manifest & package URL
+async function testHappyPath(version: string): Promise<void> {
+  // Mock the environment
+  process.env.GITHUB_REPOSITORY = 'test/test'
+  github.context.eventName = 'release'
+  github.context.payload = {
+    release: {
+      id: '123',
+      tag_name: version
+    }
+  }
+  getInputMock.mockImplementation((name: string) => {
+    if (name === 'path') {
+      return 'test'
+    } else if (name === 'registry') {
+      return 'https://ghcr.io'
+    }
+    return ''
+  })
+
+  isDirectoryMock.mockImplementation(() => true)
+
+  createTempDirMock.mockImplementation(() => '/tmp/test')
+
+  createArchivesMock.mockImplementation(() => {
+    return {
+      zipFile: {
+        path: 'test',
+        size: 5,
+        sha256: '123'
+      },
+      tarFile: {
+        path: 'test2',
+        size: 52,
+        sha256: '1234'
+      }
+    }
+  })
+
+  publishOCIArtifactMock.mockImplementation(() => {
+    return new URL('https://ghcr.io/v2/test/test:1.0.0')
+  })
+
+  // Run the action
+  await main.run()
+
+  expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+
+  // Check manifest is in output
+  expect(setOutputMock).toHaveBeenCalledWith(
+    'package-url',
+    'https://ghcr.io/v2/test/test:1.0.0'
+  )
+  expect(setOutputMock).toHaveBeenCalledWith(
+    'package-manifest',
+    expect.any(String)
+  )
+
+  // Validate the manifest
+  const manifest = JSON.parse(setOutputMock.mock.calls[1][1])
+  expect(manifest.mediaType).toEqual(
+    'application/vnd.oci.image.manifest.v1+json'
+  )
+  expect(manifest.config.mediaType).toEqual(
+    'application/vnd.github.actions.package.config.v1+json'
+  )
+  expect(manifest.layers.length).toEqual(3)
+  expect(manifest.annotations['com.github.package.type']).toEqual(
+    'actions_oci_pkg'
+  )
+
+  // Expect the files to be cleaned up
+  expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
+}
