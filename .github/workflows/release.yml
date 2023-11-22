@@ -1,0 +1,13 @@
+name: 'release'
+on: # rebuild any PRs and main branch changes
+  release:
+    types: [created]
+jobs:
+  package-and-publish: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out!
+        uses: actions/checkout@v3
+        
+      - name: Publish action package
+        uses: ./
