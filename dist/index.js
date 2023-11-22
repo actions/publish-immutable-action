@@ -72611,52 +72611,59 @@ exports.removeDir = removeDir;
 async function createArchives(distPath, archiveTargetPath = createTempDir()) {
     const zipPath = path.join(archiveTargetPath, `archive.zip`);
     const tarPath = path.join(archiveTargetPath, `archive.tar.gz`);
-    return Promise.all([
-        new Promise((resolve, reject) => {
-            const output = fs.createWriteStream(zipPath);
-            const archive = archiver.create('zip');
-            output.on('error', (err) => {
-                reject(err);
-            });
-            archive.on('error', (err) => {
-                reject(err);
-            });
-            output.on('close', () => {
-                resolve(fileMetadata(zipPath));
-            });
-            archive.pipe(output);
-            archive.directory(distPath, false);
-            archive.finalize();
-        }),
-        new Promise((resolve, reject) => {
-            const tarStream = tar
-                .c({
-                file: tarPath,
-                C: distPath,
-                gzip: true
-            }, ['.'])
-                .then(() => {
-                resolve(fileMetadata(tarPath));
-            })
-                .catch((err) => reject(err));
+    const createZipPromise = new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver.create('zip');
+        output.on('error', (err) => {
+            reject(err);
+        });
+        archive.on('error', (err) => {
+            reject(err);
+        });
+        output.on('close', () => {
+            resolve(fileMetadata(zipPath));
+        });
+        archive.pipe(output);
+        archive.directory(distPath, false);
+        archive.finalize();
+    });
+    const createTarPromise = new Promise((resolve, reject) => {
+        tar
+            .c({
+            file: tarPath,
+            C: distPath,
+            gzip: true
+        }, ['.'])
+            // eslint-disable-next-line github/no-then
+            .catch(err => {
+            reject(err);
         })
-    ]).then(([zipFile, tarFile]) => ({ zipFile, tarFile }));
+            // eslint-disable-next-line github/no-then
+            .then(() => {
+            resolve(fileMetadata(tarPath));
+        });
+    });
+    const [zipFile, tarFile] = await Promise.all([
+        createZipPromise,
+        createTarPromise
+    ]);
+    return { zipFile, tarFile };
 }
 exports.createArchives = createArchives;
-function isDirectory(path) {
-    return fs.existsSync(path) && fs.lstatSync(path).isDirectory();
+function isDirectory(dirPath) {
+    return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory();
 }
 exports.isDirectory = isDirectory;
-function readFileContents(path) {
-    return fs.readFileSync(path);
+function readFileContents(filePath) {
+    return fs.readFileSync(filePath);
 }
 exports.readFileContents = readFileContents;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
-async function fileMetadata(path) {
-    const stats = fs.statSync(path);
+async function fileMetadata(filePath) {
+    const stats = fs.statSync(filePath);
     const size = stats.size;
     const hash = crypto.createHash('sha256');
-    const fileStream = fs.createReadStream(path);
+    const fileStream = fs.createReadStream(filePath);
     return new Promise((resolve, reject) => {
         fileStream.on('data', data => {
             hash.update(data);
@@ -72664,9 +72671,9 @@ async function fileMetadata(path) {
         fileStream.on('end', () => {
             const sha256 = hash.digest('hex');
             resolve({
-                path: path,
-                size: size,
-                sha256: 'sha256:' + sha256
+                path: filePath,
+                size,
+                sha256: `sha256:${sha256}`
             });
         });
         fileStream.on('error', err => {
@@ -72725,7 +72732,7 @@ async function publishOCIArtifact(token, registry, repository, releaseId, semver
     const uploadBlobEndpoint = new URL(`v2/${repository}/blobs/uploads/`, registry).toString();
     const manifestEndpoint = new URL(`v2/${repository}/manifests/${semver}`, registry).toString();
     core.info(`Creating GHCR package for release with semver:${semver} with path:"${zipFile.path}" and "${tarFile.path}".`);
-    let layerUploads = manifest.layers.map(layer => {
+    const layerUploads = manifest.layers.map(async (layer) => {
         switch (layer.mediaType) {
             case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
                 return uploadLayer(layer, tarFile, registry, checkBlobEndpoint, uploadBlobEndpoint, b64Token);
@@ -72747,7 +72754,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         headers: {
             Authorization: `Bearer ${b64Token}`
         },
-        validateStatus: function (status) {
+        validateStatus: () => {
             return true; // Allow non 2xx responses
         }
     });
@@ -72764,22 +72771,22 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         headers: {
             Authorization: `Bearer ${b64Token}`
         },
-        validateStatus: function (status) {
+        validateStatus: () => {
             return true; // Allow non 2xx responses
         }
     });
-    if (initiateUploadResponse.status != 202) {
+    if (initiateUploadResponse.status !== 202) {
         core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`);
         throw new Error(`Unexpected response from POST upload ${initiateUploadResponse.status}`);
     }
     const locationResponseHeader = initiateUploadResponse.headers['location'];
-    if (locationResponseHeader == undefined) {
+    if (locationResponseHeader === undefined) {
         throw new Error(`No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`);
     }
-    let pathname = locationResponseHeader + '?digest=' + layer.digest;
+    const pathname = `${locationResponseHeader}?digest=${layer.digest}`;
     const uploadBlobUrl = new URL(pathname, registryURL).toString();
     // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
-    var data;
+    let data;
     if (file.size === 0) {
         data = Buffer.alloc(0);
     }
@@ -72793,11 +72800,11 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
             'Accept-Encoding': 'gzip',
             'Content-Length': layer.size.toString()
         },
-        validateStatus: function (status) {
+        validateStatus: () => {
             return true; // Allow non 2xx responses
         }
     });
-    if (putResponse.status != 201) {
+    if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
     }
 }
@@ -72808,23 +72815,23 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
             Authorization: `Bearer ${b64Token}`,
             'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
         },
-        validateStatus: function (status) {
+        validateStatus: () => {
             return true; // Allow non 2xx responses
         }
     });
-    if (putResponse.status != 201) {
+    if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
     }
 }
 function configureRequestDebugLogging() {
     (0, axios_debug_log_1.default)({
-        request: function (debug, config) {
+        request: (debug, config) => {
             core.debug(`Request with ${config}`);
         },
-        response: function (debug, response) {
+        response: (debug, response) => {
             core.debug(`Response with ${response}`);
         },
-        error: function (debug, error) {
+        error: (debug, error) => {
             core.debug(`Error with ${error}`);
         }
     });
@@ -72893,7 +72900,7 @@ async function run() {
         const releaseTag = github.context.payload.release.tag_name;
         // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
         // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
-        let targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
+        const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
         if (!targetVersion) {
             core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
             return;
@@ -72910,7 +72917,7 @@ async function run() {
         tmpDir = fsHelper.createTempDir();
         const archives = await fsHelper.createArchives(path);
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, targetVersion.raw, new Date());
-        let packageURL = await ghcr.publishOCIArtifact(token, registryURL, repository, releaseId.toString(), targetVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
+        const packageURL = await ghcr.publishOCIArtifact(token, registryURL, repository, releaseId.toString(), targetVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
         core.setOutput('package-url', packageURL.toString());
         // TODO: We might need to do some attestation stuff here, but unsure how to integrate it yet.
         // We might need to return the manifest JSON from the Action and link it to another action,
