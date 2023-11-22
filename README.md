@@ -63,8 +63,9 @@ The key differences are:
 
 These are some features which should likely be part of this implementation.
 
-- [ ] Parsing SemVer more strictly, based on what formats we decide to support (e.g. we might not support pre-release tags)
+- [ ] Parsing SemVer more strictly, based on what formats we decide to support (e.g. we might not support prerelease tags)
 - [ ] Supporting the `path` argument containing more than one filepath so files can be specified (see [tar-helper.ts](https://github.com/actions-on-packages/package-action/blob/main/src/tar-helper.ts#L16))
-- [ ] Checking that there is a valid `action.yml` file in the repo running the action, failing if it is not an Action repo
-- [ ] Sanitising and validating relative paths passed into the `path` arg.
+- [ ] Checking that there is a valid `action.yml` file in the repository running the action, failing if it is not an Action repository
+- [ ] Sanitising and validating relative paths passed into the `path` arg
 - [ ] Integration with Attestations API (speak to `phillmv` about this)
+- [ ] A way to dynamically work out the Container Registry's URL rather than relying on the user to provide it
