@@ -74819,8 +74819,9 @@ exports.createActionPackageManifest = void 0;
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.
 function createActionPackageManifest(tarFile, zipFile, repository, version, created) {
     const configLayer = createConfigLayer();
-    const tarLayer = createTarLayer(tarFile, repository, version);
-    const zipLayer = createZipLayer(zipFile, repository, version);
+    const sanitizedRepo = sanitizeRepository(repository);
+    const tarLayer = createTarLayer(tarFile, sanitizedRepo, version);
+    const zipLayer = createZipLayer(zipFile, sanitizedRepo, version);
     const manifest = {
         schemaVersion: 2,
         mediaType: 'application/vnd.oci.image.manifest.v1+json',
@@ -74855,7 +74856,7 @@ function createZipLayer(zipFile, repository, version) {
         size: zipFile.size,
         digest: zipFile.sha256,
         annotations: {
-            'org.opencontainers.image.title': `${repository}-${version}.zip`
+            'org.opencontainers.image.title': `${repository}_${version}.zip`
         }
     };
     return zipLayer;
@@ -74866,10 +74867,15 @@ function createTarLayer(tarFile, repository, version) {
         size: tarFile.size,
         digest: tarFile.sha256,
         annotations: {
-            'org.opencontainers.image.title': `${repository}-${version}.tar.gz`
+            'org.opencontainers.image.title': `${repository}_${version}.tar.gz`
         }
     };
     return tarLayer;
+}
+// Remove slashes so we can use the repository in a filename
+// repository usually includes the namespace too, e.g. my-org/my-repo
+function sanitizeRepository(repository) {
+    return repository.replace('/', '-');
 }
 
 

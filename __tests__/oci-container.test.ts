@@ -4,7 +4,8 @@ import { FileMetadata } from '../src/fs-helper'
 describe('createActionPackageManigest', () => {
   it('creates a manifest containing the provided information', () => {
     const date = new Date()
-    const repo = 'test-repo'
+    const repo = 'test-org/test-repo'
+    const sanitizedRepo = 'test-org-test-repo'
     const version = '1.0.0'
     const tarFile: FileMetadata = {
       path: '/test/test/test',
@@ -43,7 +44,7 @@ describe('createActionPackageManigest', () => {
                     "size":${tarFile.size},
                     "digest":"${tarFile.sha256}",
                     "annotations":{
-                        "org.opencontainers.image.title":"${repo}-${version}.tar.gz"
+                        "org.opencontainers.image.title":"${sanitizedRepo}_${version}.tar.gz"
                     }
                 },
                 {
@@ -51,7 +52,7 @@ describe('createActionPackageManigest', () => {
                     "size":${tarFile.size},
                     "digest":"${tarFile.sha256}",
                     "annotations":{
-                        "org.opencontainers.image.title":"${repo}-${version}.zip"
+                        "org.opencontainers.image.title":"${sanitizedRepo}_${version}.zip"
                     }
                 }
             ],
@@ -74,8 +75,8 @@ describe('createActionPackageManigest', () => {
         size: 100,
         sha256: '1234567890'
       },
-      'test-repo',
-      '1.0.0',
+      repo,
+      version,
       date
     )
 
