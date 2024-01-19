@@ -26,24 +26,7 @@ outputs:
     description: 'The name of package published to GHCR along with semver. For example, https://ghcr.io/actions/package-action:1.0.1'
   package-manifest:
     description: 'The package manifest of the published package in JSON format'
-runs:
-  using: 'composite'
-  steps:
-    - run: ls
-      shell: bash
-    # - run: node ./dist/index.js
-    #   shell: bash
-    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.51
-      id: publish
-    - name: Output variables
-      shell: bash
-      run: |
-        echo "package manifest": ${{steps.publish.outputs.package-manifest}}
-        echo "package manifest": ${{steps.publish.outputs.package-url}}
-        echo "package-manifest=${{steps.publish.outputs.package-manifest}}" >> $GITHUB_OUTPUT
-        echo "package-url=${{steps.publish.outputs.package-url}}" >> $GITHUB_OUTPUT
-        cat $GITHUB_OUTPUT
 
-# runs:
-#   using: node20
-#   main: dist/index.js
+runs:
+  using: node20
+  main: ../dist/index.js
