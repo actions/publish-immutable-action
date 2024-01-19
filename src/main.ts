@@ -39,8 +39,9 @@ export async function run(): Promise<void> {
 
     // Gather & validate user inputs
     const token: string = core.getInput('token')
-    const registryURL: URL = new URL(core.getInput('registry')) // TODO: Should this be dynamic? Maybe an API endpoint to grab the registry for GHES/proxima purposes.
-
+    const registryURL: URL = new URL('https://ghcr.io/') // TODO: Should this be dynamic? Maybe an API endpoint to grab the registry for GHES/proxima purposes.
+    console.log(core.getInput('registry'))
+    console.log(`registryURL: ${registryURL}`)
     // Paths to be included in the OCI image
     const paths: string[] = core.getInput('path').split(' ')
     let path = ''
