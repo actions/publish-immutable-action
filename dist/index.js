@@ -74773,7 +74773,8 @@ async function run() {
         if (!response.ok) {
             throw new Error(`Failed to fetch status page: ${response.statusText}`);
         }
-        const registryURL = new URL((await response.json()).url);
+        const data = await response.json();
+        const registryURL = new URL(data.url);
         console.log(`registryURL (supplied): ${core.getInput('registry')}`); // TODO: get rid of the `registry` input
         console.log(`registryURL (from URL): ${registryURL}`);
         // Paths to be included in the OCI image
