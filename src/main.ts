@@ -40,9 +40,16 @@ export async function run(): Promise<void> {
     // Gather & validate user inputs
     const token: string = core.getInput('token')
 
-    //const response = await fetch('http://echo.jsontest.com/url/https:--ghcr.io') // for testing locally
+    console.log(
+      'Official url: ' +
+        process.env.GITHUB_API_URL +
+        '/packages/container-registry-url'
+    )
+    //const response = await fetch(
+    //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
+    //)
     const response = await fetch(
-      process.env.GITHUB_API_URL + '/packages/container-registry-url'
+      'http://echo.jsontest.com/url/https:--ghcr.io' // for testing locally
     )
     if (!response.ok) {
       throw new Error(`Failed to fetch status page: ${response.statusText}`)
@@ -50,6 +57,7 @@ export async function run(): Promise<void> {
     const registryURL: URL = new URL(await (await response.json()).url)
     console.log(core.getInput('registry'))
     console.log(`registryURL: ${registryURL}`)
+
     // Paths to be included in the OCI image
     const paths: string[] = core.getInput('path').split(' ')
     let path = ''

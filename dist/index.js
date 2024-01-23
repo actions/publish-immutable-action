@@ -74764,8 +74764,14 @@ async function run() {
         }
         // Gather & validate user inputs
         const token = core.getInput('token');
-        //const response = await fetch('http://echo.jsontest.com/url/https:--ghcr.io') // for testing locally
-        const response = await fetch(process.env.GITHUB_API_URL + '/packages/container-registry-url');
+        console.log('Official url: ' +
+            process.env.GITHUB_API_URL +
+            '/packages/container-registry-url');
+        //const response = await fetch(
+        //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
+        //)
+        const response = await fetch('http://echo.jsontest.com/url/https:--ghcr.io' // for testing locally
+        );
         if (!response.ok) {
             throw new Error(`Failed to fetch status page: ${response.statusText}`);
         }
