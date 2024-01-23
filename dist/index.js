@@ -74764,7 +74764,12 @@ async function run() {
         }
         // Gather & validate user inputs
         const token = core.getInput('token');
-        const registryURL = new URL('https://ghcr.io/'); // TODO: Should this be dynamic? Maybe an API endpoint to grab the registry for GHES/proxima purposes.
+        //const response = await fetch('http://echo.jsontest.com/url/https:--ghcr.io') // for testing locally
+        const response = await fetch(process.env.GITHUB_API_URL + '/packages/container-registry-url');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch status page: ${response.statusText}`);
+        }
+        const registryURL = new URL(await (await response.json()).url);
         console.log(core.getInput('registry'));
         console.log(`registryURL: ${registryURL}`);
         // Paths to be included in the OCI image
