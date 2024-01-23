@@ -74764,20 +74764,18 @@ async function run() {
         }
         // Gather & validate user inputs
         const token = core.getInput('token');
-        console.log('Official url: ' +
-            process.env.GITHUB_API_URL +
-            '/packages/container-registry-url');
+        console.log(`Official url: ${process.env.GITHUB_API_URL + '/packages/container-registry-url'}`);
         //const response = await fetch(
         //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
         //)
-        const response = await fetch('http://echo.jsontest.com/url/https:--ghcr.io' // for testing locally
+        const response = await fetch('http://echo.jsontest.com/url/https:ghcr.io' // for testing locally. Remove the slashes, they will be reintroduced when forming the URL object below
         );
         if (!response.ok) {
             throw new Error(`Failed to fetch status page: ${response.statusText}`);
         }
         const registryURL = new URL(await (await response.json()).url);
-        console.log(core.getInput('registry'));
-        console.log(`registryURL: ${registryURL}`);
+        console.log(`registryURL (supplied): ${core.getInput('registry')}`);
+        console.log(`registryURL (from URL): ${registryURL}`);
         // Paths to be included in the OCI image
         const paths = core.getInput('path').split(' ');
         let path = '';
