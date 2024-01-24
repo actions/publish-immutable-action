@@ -74742,13 +74742,6 @@ const semver_1 = __importDefault(__nccwpck_require__(11383));
 async function run() {
     const tmpDirs = [];
     try {
-        const whoToGreet = process.env.who_to_greet;
-        core.info(`Hello, ${whoToGreet}!`);
-        const token2 = process.env.TOKEN;
-        core.info(`Hello, ${token2}!`);
-        const token3 = process.env.who_to_greet2;
-        core.info(`whaaa? ${token3}!`);
-        core.info('Hello, world!');
         // Parse and validate Actions execution context, including the repository name, release name and event type
         const repository = process.env.GITHUB_REPOSITORY || '';
         if (repository === '') {
@@ -74770,7 +74763,7 @@ async function run() {
             return;
         }
         // Gather & validate user inputs
-        const token = core.getInput('token');
+        const token = process.env.TOKEN;
         console.log(`Official url: ${process.env.GITHUB_API_URL + '/packages/container-registry-url'}`);
         //const response = await fetch(
         //  process.env.GITHUB_API_URL + '/packages/container-registry-url'

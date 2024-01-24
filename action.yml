@@ -28,12 +28,10 @@ runs:
       shell: bash
     # - run: node ./dist/index.js
     #   shell: bash
-    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.61
+    - uses: ddivad195/publish-action-package/package-and-publish@vv0.0.62
       id: publish
       env:
         TOKEN: ${{ github.token }}
-        who_to_greet: ${{ inputs.registry }}
-        who_to_greet2: Monalisa
     - name: Output variables
       shell: bash
       run: |

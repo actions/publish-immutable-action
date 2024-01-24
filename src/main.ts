@@ -13,14 +13,6 @@ export async function run(): Promise<void> {
   const tmpDirs: string[] = []
 
   try {
-    const whoToGreet = process.env.who_to_greet
-    core.info(`Hello, ${whoToGreet}!`)
-    const token2 = process.env.TOKEN
-    core.info(`Hello, ${token2}!`)
-    const token3 = process.env.who_to_greet2
-    core.info(`whaaa? ${token3}!`)
-    core.info('Hello, world!')
-
     // Parse and validate Actions execution context, including the repository name, release name and event type
     const repository: string = process.env.GITHUB_REPOSITORY || ''
     if (repository === '') {
@@ -46,7 +38,7 @@ export async function run(): Promise<void> {
     }
 
     // Gather & validate user inputs
-    const token: string = core.getInput('token')
+    const token: string = process.env.TOKEN!
 
     console.log(
       `Official url: ${
