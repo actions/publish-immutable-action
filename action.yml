@@ -11,10 +11,6 @@ inputs:
     required: false
     description: The work directory or path to be tar archived and uploaded as OCI Artifact layer.
     default: '.'
-  registry:
-    required: false
-    description: The registry to publish the action package to.
-    default: https://ghcr.io/ # TODO: this should perhaps be fetched from GitHub API.
 
 outputs:
   package-url:
@@ -28,7 +24,7 @@ runs:
       shell: bash
     # - run: node ./dist/index.js
     #   shell: bash
-    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.63
+    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.64
       id: publish
       env:
         TOKEN: ${{ github.token }}

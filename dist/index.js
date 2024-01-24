@@ -74762,9 +74762,8 @@ async function run() {
             core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
             return;
         }
-        // Gather & validate user inputs
         const token = process.env.TOKEN;
-        console.log(`Official url: ${process.env.GITHUB_API_URL + '/packages/container-registry-url'}`);
+        // TODO: once https://github.com/github/github/pull/309384 goes in, we can switch to the actual endpoint
         //const response = await fetch(
         //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
         //)
@@ -74775,8 +74774,8 @@ async function run() {
         }
         const data = await response.json();
         const registryURL = new URL(data.url);
-        console.log(`registryURL (supplied): ${core.getInput('registry')}`); // TODO: get rid of the `registry` input
-        console.log(`registryURL (from URL): ${registryURL}`);
+        console.log(`Container registry URL: ${registryURL}`);
+        // Gather & validate user input
         // Paths to be included in the OCI image
         const paths = core.getInput('path').split(' ');
         let path = '';
