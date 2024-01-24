@@ -17,7 +17,7 @@ fi
 
 echo "Generating new version $VERSION with message $MESSAGE"
 
-sed -i '' -E 's/ddivad195\/publish-action-package\/package-and-publish.*$/ddivad195\/publish-action-package\/package-and-publish@v'$VERSION'/g' action.yml
+sed -i '' -E 's/ddivad195\/publish-action-package\/package-and-publish.*$/ddivad195\/publish-action-package\/package-and-publish@'$VERSION'/g' action.yml
 npm run bundle
 git add .
 git commit -m "$VERSION: $MESSAGE"
