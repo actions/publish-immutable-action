@@ -74742,6 +74742,10 @@ const semver_1 = __importDefault(__nccwpck_require__(11383));
 async function run() {
     const tmpDirs = [];
     try {
+        const whoToGreet = core.getInput('who-to-greet', { required: true });
+        core.info(`Hello, ${whoToGreet}!`);
+        const token2 = core.getInput('token', { required: true });
+        core.info(`Hello, ${token2}!`);
         // Parse and validate Actions execution context, including the repository name, release name and event type
         const repository = process.env.GITHUB_REPOSITORY || '';
         if (repository === '') {

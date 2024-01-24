@@ -7,11 +7,6 @@ branding:
   color: 'red'
 
 inputs:
-  token:
-    required: true
-    description: >
-      GITHUB_TOKEN having the write:package scope to publish an action package to GHCR.
-    default: ${{ github.token }}
   path:
     required: false
     description: The work directory or path to be tar archived and uploaded as OCI Artifact layer.
@@ -33,8 +28,11 @@ runs:
       shell: bash
     # - run: node ./dist/index.js
     #   shell: bash
-    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.56
+    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.57
       id: publish
+      with:
+        token: ${{ github.token }}
+        who-to-greet: ${{ env.registry }}
     - name: Output variables
       shell: bash
       run: |
