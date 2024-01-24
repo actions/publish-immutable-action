@@ -32,7 +32,8 @@ runs:
       id: publish
       env:
         TOKEN: ${{ github.token }}
-        who_to_greet: ${{ env.registry }}
+        who_to_greet: ${{ inputs.registry }}
+        who_to_greet2: Monalisa
     - name: Output variables
       shell: bash
       run: |
