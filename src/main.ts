@@ -18,7 +18,8 @@ export async function run(): Promise<void> {
     const token2 = process.env.TOKEN
     core.info(`Hello, ${token2}!`)
     const token3 = process.env.who_to_greet2
-    core.info(`Hello, ${token3}!`)
+    core.info(`whaaa? ${token3}!`)
+    core.info('Hello, world!')
 
     // Parse and validate Actions execution context, including the repository name, release name and event type
     const repository: string = process.env.GITHUB_REPOSITORY || ''
