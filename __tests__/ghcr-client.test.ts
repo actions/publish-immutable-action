@@ -488,7 +488,9 @@ describe('publishOCIArtifact', () => {
     modifiedTestManifest.layers[0].mediaType = 'application/json'
 
     // just checking to make sure we are not changing the shared object
-    expect(modifiedTestManifest.layers[0].mediaType).not.toEqual(testManifest.layers[0].mediaType)
+    expect(modifiedTestManifest.layers[0].mediaType).not.toEqual(
+      testManifest.layers[0].mediaType
+    )
 
     await expect(
       publishOCIArtifact(
@@ -538,8 +540,8 @@ function validateRequestConfig(status: number, url: string, config: any): void {
   }
 }
 
-function cloneLayers(layers: ociContainer.Layer[]) : ociContainer.Layer[] {
-  const result : ociContainer.Layer[] = [];
-  layers.forEach(val => result.push({ ... val })) // this is _NOT_ a deep clone
+function cloneLayers(layers: ociContainer.Layer[]): ociContainer.Layer[] {
+  const result: ociContainer.Layer[] = []
+  layers.forEach(val => result.push({ ...val })) // this is _NOT_ a deep clone
   return result
 }
