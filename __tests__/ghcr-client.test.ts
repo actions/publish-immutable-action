@@ -134,8 +134,6 @@ describe('publishOCIArtifact', () => {
     expect(axiosHeadMock).toHaveBeenCalledTimes(3)
     expect(axiosPostMock).toHaveBeenCalledTimes(3)
     expect(axiosPutMock).toHaveBeenCalledTimes(4)
-
-    // TODO: Check that the base64 encoded token is sent in the Authorization header
   })
 
   it('skips uploading all layer blobs when they all already exist', async () => {
