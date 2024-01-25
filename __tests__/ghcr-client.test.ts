@@ -189,7 +189,7 @@ describe('publishOCIArtifact', () => {
   it('skips uploading layer blobs that already exist', async () => {
     // Simulate some blobs already existing
 
-    var count = 0
+    let count = 0
     axiosHeadMock.mockImplementation(async (url, config) => {
       count++
       if (count === 1) {
@@ -542,6 +542,8 @@ function validateRequestConfig(status: number, url: string, config: any): void {
 
 function cloneLayers(layers: ociContainer.Layer[]): ociContainer.Layer[] {
   const result: ociContainer.Layer[] = []
-  layers.forEach(val => result.push({ ...val })) // this is _NOT_ a deep clone
+  for (const layer of layers) {
+    result.push({ ...layer }) // this is _NOT_ a deep clone
+  }
   return result
 }
