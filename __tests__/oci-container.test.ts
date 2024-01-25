@@ -1,7 +1,7 @@
 import { createActionPackageManifest } from '../src/oci-container'
 import { FileMetadata } from '../src/fs-helper'
 
-describe('createActionPackageManigest', () => {
+describe('createActionPackageManifest', () => {
   it('creates a manifest containing the provided information', () => {
     const date = new Date()
     const repo = 'test-org/test-repo'

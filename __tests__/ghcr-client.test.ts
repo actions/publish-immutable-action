@@ -16,12 +16,12 @@ const releaseId = 'test-release-id'
 const semver = '1.2.3'
 const genericSha = '1234567890' // We should look at using different shas here to catch bug, but that make location validation harder
 const zipFile: fsHelper.FileMetadata = {
-  path: `test-repo-{semver}.zip`,
+  path: `test-repo-${semver}.zip`,
   size: 123,
   sha256: genericSha
 }
 const tarFile: fsHelper.FileMetadata = {
-  path: `test-repo-{semver}.tar.gz`,
+  path: `test-repo-${semver}.tar.gz`,
   size: 456,
   sha256: genericSha
 }
@@ -52,7 +52,7 @@ const testManifest: ociContainer.Manifest = {
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.tar+gzip',
       size: tarFile.size,
-      digest: `sha256:{tarFile.sha256}`,
+      digest: `sha256:${tarFile.sha256}`,
       annotations: {
         'org.opencontainers.image.title': tarFile.path
       }
@@ -60,7 +60,7 @@ const testManifest: ociContainer.Manifest = {
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.zip',
       size: zipFile.size,
-      digest: `sha256:{zipFile.sha256}`,
+      digest: `sha256:${zipFile.sha256}`,
       annotations: {
         'org.opencontainers.image.title': zipFile.path
       }
@@ -102,7 +102,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -151,7 +151,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -213,7 +213,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -349,7 +349,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -396,7 +396,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -450,7 +450,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -514,7 +514,7 @@ function validateRequestConfig(status: number, url: string, config: any): void {
   // Basic URL checks
   expect(url).toBeDefined()
   if (!url.startsWith(registry.toString())) {
-    console.log(`{url} does not start with {registry}`)
+    console.log(`${url} does not start with ${registry}`)
   }
   // if these expect fails, run the test again with `-- --silent=false`
   // the console.log above should give a clue about which URL is failing
