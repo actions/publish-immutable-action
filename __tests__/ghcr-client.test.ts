@@ -512,12 +512,12 @@ describe('publishOCIArtifact', () => {
 function validateRequestConfig(status: number, url: string, config: any): void {
   // Basic URL checks
   expect(url).toBeDefined()
-
   if (!url.startsWith(registry.toString())) {
-    console.log(url)
+    console.log(`{url} does not start with {registry}`)
   }
-
-  expect(url.startsWith(registry.toString())).toBe(true)
+  // if these expect fails, run the test again with `-- --silent=false`
+  // the console.log above should give a clue about which URL is failing
+  expect(url.startsWith(registry.toString())).toBeTruthy()
 
   // Config checks
   expect(config).toBeDefined()
