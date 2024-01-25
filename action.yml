@@ -24,7 +24,7 @@ runs:
       shell: bash
     # - run: node ./dist/index.js
     #   shell: bash
-    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.66
+    - uses: ddivad195/publish-action-package/package-and-publish@v0.0.67
       id: publish
       env:
         TOKEN: ${{ github.token }}
