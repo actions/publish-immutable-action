@@ -74,14 +74,6 @@ describe('createArchives', () => {
     expect(zipSHA).toEqual(systemZipHash)
     expect(tarSHA).toEqual(systemTarHash)
   })
-
-  /*
-  it('creates archives fails if destination cannot be reached', async () => {
-    await expect(
-      fsHelper.createArchives('/this/destination/path/does/not/exist', tmpDir)
-    ).rejects.toThrow(/^ENOENT: no such file or directory, lstat/)
-  })
-  */
 })
 
 describe('createTempDir', () => {
