@@ -74,8 +74,6 @@ describe('createArchives', () => {
     expect(zipSHA).toEqual(systemZipHash)
     expect(tarSHA).toEqual(systemTarHash)
   })
-
-  // TODO: Test the failure cases
 })
 
 describe('createTempDir', () => {
@@ -189,11 +187,15 @@ describe('bundleFilesintoDirectory', () => {
     // Create some test files and folders in the sourceDir
     const file1 = `${sourceDir}/file1.txt`
     const folder1 = `${sourceDir}/folder1`
-    const file2 = `${folder1}/file3.txt`
+    const file2 = `${folder1}/file2.txt`
+    const folder2 = `${folder1}/folder2`
+    const file3 = `${folder2}/file3.txt`
 
     fs.mkdirSync(folder1)
+    fs.mkdirSync(folder2)
     fs.writeFileSync(file1, fileContent)
     fs.writeFileSync(file2, fileContent)
+    fs.writeFileSync(file3, fileContent)
 
     // Bundle the files and folders into the targetDir
     fsHelper.bundleFilesintoDirectory([file1, folder1], targetDir)
@@ -206,6 +208,10 @@ describe('bundleFilesintoDirectory', () => {
 
     expect(fs.existsSync(file2)).toEqual(true)
     expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
+
+    expect(fs.existsSync(`${targetDir}/folder1/folder2`)).toEqual(true)
+    expect(fs.existsSync(file3)).toEqual(true)
+    expect(fsHelper.readFileContents(file3).toString()).toEqual(fileContent)
   })
 
   it('throws an error if a file or directory does not exist', () => {

@@ -9,20 +9,21 @@ let axiosPostMock: jest.SpyInstance
 let axiosPutMock: jest.SpyInstance
 let axiosHeadMock: jest.SpyInstance
 
-const token = '1234567890'
+const token = 'test-token'
 const registry = new URL('https://ghcr.io')
-const repository = 'test/test'
-const releaseId = '1234567890'
-const semver = '1.0.0'
+const repository = 'test-org/test-repo'
+const releaseId = 'test-release-id'
+const semver = '1.2.3'
+const genericSha = '1234567890' // We should look at using different shas here to catch bug, but that make location validation harder
 const zipFile: fsHelper.FileMetadata = {
-  path: 'test-repo-1.0.0.zip',
-  size: 100,
-  sha256: '1234567890'
+  path: `test-repo-${semver}.zip`,
+  size: 123,
+  sha256: genericSha
 }
 const tarFile: fsHelper.FileMetadata = {
-  path: 'test-repo-1.0.0.tar.gz',
-  size: 100,
-  sha256: '1234567890'
+  path: `test-repo-${semver}.tar.gz`,
+  size: 456,
+  sha256: genericSha
 }
 
 const testManifest: ociContainer.Manifest = {
@@ -50,25 +51,25 @@ const testManifest: ociContainer.Manifest = {
     },
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.tar+gzip',
-      size: 100,
-      digest: 'sha256:1234567890',
+      size: tarFile.size,
+      digest: `sha256:${tarFile.sha256}`,
       annotations: {
-        'org.opencontainers.image.title': 'test-repo-1.0.0.tar.gz'
+        'org.opencontainers.image.title': tarFile.path
       }
     },
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.zip',
-      size: 100,
-      digest: 'sha256:1234567890',
+      size: zipFile.size,
+      digest: `sha256:${zipFile.sha256}`,
       annotations: {
-        'org.opencontainers.image.title': 'test-repo-1.0.0.zip'
+        'org.opencontainers.image.title': zipFile.path
       }
     }
   ],
   annotations: {
     'org.opencontainers.image.created': '2021-01-01T00:00:00.000Z',
-    'action.tar.gz.digest': '1234567890',
-    'action.zip.digest': '1234567890',
+    'action.tar.gz.digest': tarFile.sha256,
+    'action.zip.digest': zipFile.sha256,
     'com.github.package.type': 'actions_oci_pkg'
   }
 }
@@ -101,7 +102,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -133,11 +134,9 @@ describe('publishOCIArtifact', () => {
     expect(axiosHeadMock).toHaveBeenCalledTimes(3)
     expect(axiosPostMock).toHaveBeenCalledTimes(3)
     expect(axiosPutMock).toHaveBeenCalledTimes(4)
-
-    // TODO: Check that the base64 encoded token is sent in the Authorization header
   })
 
-  it('skips uploading layer blobs that already exist', async () => {
+  it('skips uploading all layer blobs when they all already exist', async () => {
     // Simulate all blobs already existing
     axiosHeadMock.mockImplementation(async (url, config) => {
       validateRequestConfig(200, url, config)
@@ -152,7 +151,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -185,6 +184,68 @@ describe('publishOCIArtifact', () => {
     expect(axiosHeadMock).toHaveBeenCalledTimes(3)
     expect(axiosPostMock).toHaveBeenCalledTimes(0)
     expect(axiosPutMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips uploading layer blobs that already exist', async () => {
+    // Simulate some blobs already existing
+
+    let count = 0
+    axiosHeadMock.mockImplementation(async (url, config) => {
+      count++
+      if (count === 1) {
+        // report the first blob as being there
+        validateRequestConfig(200, url, config)
+        return {
+          status: 200
+        }
+      } else {
+        // report all others are missing
+        validateRequestConfig(404, url, config)
+        return {
+          status: 404
+        }
+      }
+    })
+
+    // Simulate successful initiation of uploads for all blobs & return location
+    axiosPostMock.mockImplementation(async (url, data, config) => {
+      validateRequestConfig(202, url, config)
+      return {
+        status: 202,
+        headers: {
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
+        }
+      }
+    })
+
+    // Simulate successful reading of all the files
+    fsReadFileSyncMock.mockImplementation(() => {
+      return Buffer.from('test')
+    })
+
+    // Simulate successful upload of all blobs & then the manifest
+    axiosPutMock.mockImplementation(async (url, data, config) => {
+      validateRequestConfig(201, url, config)
+      return {
+        status: 201
+      }
+    })
+
+    await publishOCIArtifact(
+      token,
+      registry,
+      repository,
+      releaseId,
+      semver,
+      zipFile,
+      tarFile,
+      testManifest
+    )
+
+    // We should only head all the blobs and then upload the missing blobs and manifest
+    expect(axiosHeadMock).toHaveBeenCalledTimes(3)
+    expect(axiosPostMock).toHaveBeenCalledTimes(2)
+    expect(axiosPutMock).toHaveBeenCalledTimes(3)
   })
 
   it('throws an error if checking for existing blobs fails', async () => {
@@ -288,7 +349,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -335,7 +396,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -389,7 +450,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
         }
       }
     })
@@ -422,8 +483,14 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if one of the layers has the wrong media type', async () => {
-    const modifiedTestManifest = testManifest
+    const modifiedTestManifest = { ...testManifest } // This is _NOT_ a deep clone
+    modifiedTestManifest.layers = cloneLayers(modifiedTestManifest.layers)
     modifiedTestManifest.layers[0].mediaType = 'application/json'
+
+    // just checking to make sure we are not changing the shared object
+    expect(modifiedTestManifest.layers[0].mediaType).not.toEqual(
+      testManifest.layers[0].mediaType
+    )
 
     await expect(
       publishOCIArtifact(
@@ -434,7 +501,7 @@ describe('publishOCIArtifact', () => {
         semver,
         zipFile,
         tarFile,
-        testManifest
+        modifiedTestManifest
       )
     ).rejects.toThrow('Unknown media type application/json')
   })
@@ -446,12 +513,12 @@ describe('publishOCIArtifact', () => {
 function validateRequestConfig(status: number, url: string, config: any): void {
   // Basic URL checks
   expect(url).toBeDefined()
-
   if (!url.startsWith(registry.toString())) {
-    console.log(url)
+    console.log(`${url} does not start with ${registry}`)
   }
-
-  expect(url.startsWith(registry.toString())).toBe(true)
+  // if these expect fails, run the test again with `-- --silent=false`
+  // the console.log above should give a clue about which URL is failing
+  expect(url.startsWith(registry.toString())).toBeTruthy()
 
   // Config checks
   expect(config).toBeDefined()
@@ -471,4 +538,12 @@ function validateRequestConfig(status: number, url: string, config: any): void {
       `Bearer ${Buffer.from(token).toString('base64')}`
     )
   }
+}
+
+function cloneLayers(layers: ociContainer.Layer[]): ociContainer.Layer[] {
+  const result: ociContainer.Layer[] = []
+  for (const layer of layers) {
+    result.push({ ...layer }) // this is _NOT_ a deep clone
+  }
+  return result
 }

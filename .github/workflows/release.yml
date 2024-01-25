@@ -8,8 +8,5 @@ jobs:
     steps:
       - name: Checking out!
         uses: actions/checkout@v4
-      - uses: actions/setup-node@v3.6.0
-        with:
-           node-version: 16
       - name: Publish action package
         uses: ./
