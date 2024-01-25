@@ -6,7 +6,7 @@ describe('createActionPackageManigest', () => {
     const date = new Date()
     const repo = 'test-org/test-repo'
     const sanitizedRepo = 'test-org-test-repo'
-    const version = '1.0.0'
+    const version = '1.2.3'
     const tarFile: FileMetadata = {
       path: '/test/test/test.tar.gz',
       sha256: 'tarSha',
