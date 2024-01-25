@@ -74754,6 +74754,7 @@ async function run() {
         }
         const releaseId = github.context.payload.release.id;
         const releaseTag = github.context.payload.release.tag_name;
+        console.log(`Release ID and tag? ${releaseId}, ${releaseTag}`);
         // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
         // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
         const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
