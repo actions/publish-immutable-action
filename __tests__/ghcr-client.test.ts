@@ -137,7 +137,7 @@ describe('publishOCIArtifact', () => {
     // TODO: Check that the base64 encoded token is sent in the Authorization header
   })
 
-  it('skips uploading layer blobs that already exist', async () => {
+  it('skips uploading all layer blobs when they all already exist', async () => {
     // Simulate all blobs already existing
     axiosHeadMock.mockImplementation(async (url, config) => {
       validateRequestConfig(200, url, config)
@@ -185,6 +185,68 @@ describe('publishOCIArtifact', () => {
     expect(axiosHeadMock).toHaveBeenCalledTimes(3)
     expect(axiosPostMock).toHaveBeenCalledTimes(0)
     expect(axiosPutMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips uploading layer blobs that already exist', async () => {
+    // Simulate some blobs already existing
+
+    var count = 0
+    axiosHeadMock.mockImplementation(async (url, config) => {
+      count++
+      if (count === 1) {
+        // report the first blob as being there
+        validateRequestConfig(200, url, config)
+        return {
+          status: 200
+        }
+      } else {
+        // report all others are missing
+        validateRequestConfig(404, url, config)
+        return {
+          status: 404
+        }
+      }
+    })
+
+    // Simulate successful initiation of uploads for all blobs & return location
+    axiosPostMock.mockImplementation(async (url, data, config) => {
+      validateRequestConfig(202, url, config)
+      return {
+        status: 202,
+        headers: {
+          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+        }
+      }
+    })
+
+    // Simulate successful reading of all the files
+    fsReadFileSyncMock.mockImplementation(() => {
+      return Buffer.from('test')
+    })
+
+    // Simulate successful upload of all blobs & then the manifest
+    axiosPutMock.mockImplementation(async (url, data, config) => {
+      validateRequestConfig(201, url, config)
+      return {
+        status: 201
+      }
+    })
+
+    await publishOCIArtifact(
+      token,
+      registry,
+      repository,
+      releaseId,
+      semver,
+      zipFile,
+      tarFile,
+      testManifest
+    )
+
+    // We should only head all the blobs and then upload the missing blobs and manifest
+    expect(axiosHeadMock).toHaveBeenCalledTimes(3)
+    expect(axiosPostMock).toHaveBeenCalledTimes(2)
+    expect(axiosPutMock).toHaveBeenCalledTimes(3)
   })
 
   it('throws an error if checking for existing blobs fails', async () => {
