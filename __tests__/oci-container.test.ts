@@ -49,8 +49,8 @@ describe('createActionPackageManigest', () => {
                 },
                 {
                     "mediaType":"application/vnd.github.actions.package.layer.v1.zip",
-                    "size":${tarFile.size},
-                    "digest":"${tarFile.sha256}",
+                    "size":${zipFile.size},
+                    "digest":"${zipFile.sha256}",
                     "annotations":{
                         "org.opencontainers.image.title":"${sanitizedRepo}_${version}.zip"
                     }
