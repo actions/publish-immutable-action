@@ -484,8 +484,12 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if one of the layers has the wrong media type', async () => {
-    const modifiedTestManifest = testManifest
+    const modifiedTestManifest = { ...testManifest } // This is _NOT_ a deep clone
+    modifiedTestManifest.layers = cloneLayers(modifiedTestManifest.layers)
     modifiedTestManifest.layers[0].mediaType = 'application/json'
+
+    // just checking to make sure we are not changing the shared object
+    expect(modifiedTestManifest.layers[0].mediaType).not.toEqual(testManifest.layers[0].mediaType)
 
     await expect(
       publishOCIArtifact(
@@ -496,7 +500,7 @@ describe('publishOCIArtifact', () => {
         semver,
         zipFile,
         tarFile,
-        testManifest
+        modifiedTestManifest
       )
     ).rejects.toThrow('Unknown media type application/json')
   })
@@ -533,4 +537,10 @@ function validateRequestConfig(status: number, url: string, config: any): void {
       `Bearer ${Buffer.from(token).toString('base64')}`
     )
   }
+}
+
+function cloneLayers(layers: ociContainer.Layer[]) : ociContainer.Layer[] {
+  const result : ociContainer.Layer[] = [];
+  layers.forEach(val => result.push({ ... val })) // this is _NOT_ a deep clone
+  return result
 }
