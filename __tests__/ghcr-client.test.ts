@@ -9,20 +9,21 @@ let axiosPostMock: jest.SpyInstance
 let axiosPutMock: jest.SpyInstance
 let axiosHeadMock: jest.SpyInstance
 
-const token = '1234567890'
+const token = 'test-token'
 const registry = new URL('https://ghcr.io')
-const repository = 'test/test'
-const releaseId = '1234567890'
-const semver = '1.0.0'
+const repository = 'test-org/test-repo'
+const releaseId = 'test-release-id'
+const semver = '1.2.3'
+const genericSha = '1234567890' // We should look at using different shas here to catch bug, but that make location validation harder
 const zipFile: fsHelper.FileMetadata = {
-  path: 'test-repo-1.0.0.zip',
-  size: 100,
-  sha256: '1234567890'
+  path: `test-repo-{semver}.zip`,
+  size: 123,
+  sha256: genericSha
 }
 const tarFile: fsHelper.FileMetadata = {
-  path: 'test-repo-1.0.0.tar.gz',
-  size: 100,
-  sha256: '1234567890'
+  path: `test-repo-{semver}.tar.gz`,
+  size: 456,
+  sha256: genericSha
 }
 
 const testManifest: ociContainer.Manifest = {
@@ -50,25 +51,25 @@ const testManifest: ociContainer.Manifest = {
     },
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.tar+gzip',
-      size: 100,
-      digest: 'sha256:1234567890',
+      size: tarFile.size,
+      digest: `sha256:{tarFile.sha256}`,
       annotations: {
-        'org.opencontainers.image.title': 'test-repo-1.0.0.tar.gz'
+        'org.opencontainers.image.title': tarFile.path
       }
     },
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.zip',
-      size: 100,
-      digest: 'sha256:1234567890',
+      size: zipFile.size,
+      digest: `sha256:{zipFile.sha256}`,
       annotations: {
-        'org.opencontainers.image.title': 'test-repo-1.0.0.zip'
+        'org.opencontainers.image.title': zipFile.path
       }
     }
   ],
   annotations: {
     'org.opencontainers.image.created': '2021-01-01T00:00:00.000Z',
-    'action.tar.gz.digest': '1234567890',
-    'action.zip.digest': '1234567890',
+    'action.tar.gz.digest': tarFile.sha256,
+    'action.zip.digest': zipFile.sha256,
     'com.github.package.type': 'actions_oci_pkg'
   }
 }
@@ -101,7 +102,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
@@ -152,7 +153,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
@@ -214,7 +215,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
@@ -350,7 +351,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
@@ -397,7 +398,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
@@ -451,7 +452,7 @@ describe('publishOCIArtifact', () => {
       return {
         status: 202,
         headers: {
-          location: 'https://ghcr.io/v2/test/test/blobs/uploads/1234567890'
+          location: `https://ghcr.io/v2/{repository}/blobs/uploads/{genericSha}`
         }
       }
     })
