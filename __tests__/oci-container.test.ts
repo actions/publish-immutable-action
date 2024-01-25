@@ -8,14 +8,14 @@ describe('createActionPackageManigest', () => {
     const sanitizedRepo = 'test-org-test-repo'
     const version = '1.0.0'
     const tarFile: FileMetadata = {
-      path: '/test/test/test',
-      sha256: '1234567890',
-      size: 100
+      path: '/test/test/test.tar.gz',
+      sha256: 'tarSha',
+      size: 123
     }
     const zipFile: FileMetadata = {
-      path: '/test/test/test',
-      sha256: '1234567890',
-      size: 100
+      path: '/test/test/test.zip',
+      sha256: 'zipSha',
+      size: 456
     }
 
     const expectedJSON = `{
@@ -67,13 +67,13 @@ describe('createActionPackageManigest', () => {
     const manifest = createActionPackageManifest(
       {
         path: 'test.tar.gz',
-        size: 100,
-        sha256: '1234567890'
+        size: tarFile.size,
+        sha256: tarFile.sha256
       },
       {
         path: 'test.zip',
-        size: 100,
-        sha256: '1234567890'
+        size: zipFile.size,
+        sha256: zipFile.sha256
       },
       repo,
       version,
