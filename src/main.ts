@@ -39,12 +39,9 @@ export async function run(pathInput: string): Promise<void> {
     }
 
     const token: string = process.env.TOKEN!
-    // TODO: once https://github.com/github/github/pull/309384 goes in, we can switch to the actual endpoint
-    //const response = await fetch(
-    //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
-    //)
+
     const response = await fetch(
-      'http://echo.jsontest.com/url/https:ghcr.io' // for testing locally. Remove the slashes, they will be reintroduced when forming the URL object below
+      process.env.GITHUB_API_URL + '/packages/container-registry-url'
     )
     if (!response.ok) {
       throw new Error(`Failed to fetch status page: ${response.statusText}`)
