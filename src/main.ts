@@ -21,17 +21,18 @@ export async function run(pathInput: string): Promise<void> {
       core.setFailed(`Could not find Repository.`)
       return
     }
+
     if (github.context.eventName !== 'release') {
       core.setFailed('Please ensure you have the workflow trigger as release.')
       return
     }
+
     const releaseId: string = github.context.payload.release.id
     const releaseTag: string = github.context.payload.release.tag_name
     // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
     // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
     const targetVersion = semver.parse(releaseTag.replace(/^v/, ''))
     if (!targetVersion) {
-      // TODO: We may want to limit semvers to only x.x.x, without the pre-release tags, but for now we'll allow them.
       core.setFailed(
         `${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
       )
@@ -39,19 +40,6 @@ export async function run(pathInput: string): Promise<void> {
     }
 
     const token: string = process.env.TOKEN!
-    // TODO: once https://github.com/github/github/pull/309384 goes in, we can switch to the actual endpoint
-    //const response = await fetch(
-    //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
-    //)
-    const response = await fetch(
-      'http://echo.jsontest.com/url/https:ghcr.io' // for testing locally. Remove the slashes, they will be reintroduced when forming the URL object below
-    )
-    if (!response.ok) {
-      throw new Error(`Failed to fetch status page: ${response.statusText}`)
-    }
-    const data = await response.json()
-    const registryURL: URL = new URL(data.url)
-    console.log(`Container registry URL: ${registryURL}`)
 
     // Gather & validate user input
     // Paths to be included in the OCI image
@@ -67,6 +55,13 @@ export async function run(pathInput: string): Promise<void> {
       const bundleDir = fsHelper.createTempDir()
       tmpDirs.push(bundleDir)
       path = fsHelper.bundleFilesintoDirectory(paths, bundleDir)
+    }
+
+    if (!fsHelper.isActionRepo(path)) {
+      core.setFailed(
+        'action.y(a)ml not found. Action packages can be created only for action repositories.'
+      )
+      return
     }
 
     // Create a temporary directory to store the archives
@@ -88,6 +83,16 @@ export async function run(pathInput: string): Promise<void> {
     const manifestHash = manifestSHA
       .update(JSON.stringify(manifest))
       .digest('hex')
+
+    const response = await fetch(
+      process.env.GITHUB_API_URL + '/packages/container-registry-url'
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to fetch status page: ${response.statusText}`)
+    }
+    const data = await response.json()
+    const registryURL: URL = new URL(data.url)
+    console.log(`Container registry URL: ${registryURL}`)
 
     const packageURL = await ghcr.publishOCIArtifact(
       token,
