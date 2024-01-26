@@ -226,7 +226,7 @@ describe('bundleFilesintoDirectory', () => {
     fs.writeFileSync(file3, fileContent)
 
     // Bundle the files and folders into the targetDir
-    fsHelper.bundleFilesintoDirectory([file1, folder1], targetDir)
+    fsHelper.bundleFilesintoDirectory([file1, folder1])
 
     // Check that the files and folders were copied
     expect(fs.existsSync(file1)).toEqual(true)
@@ -244,7 +244,7 @@ describe('bundleFilesintoDirectory', () => {
 
   it('throws an error if a file or directory does not exist', () => {
     expect(() => {
-      fsHelper.bundleFilesintoDirectory(['/does/not/exist'], targetDir)
+      fsHelper.bundleFilesintoDirectory(['/does/not/exist'])
     }).toThrow('File /does/not/exist does not exist')
   })
 })

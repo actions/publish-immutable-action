@@ -41,20 +41,9 @@ export async function run(pathInput: string): Promise<void> {
 
     const token: string = process.env.TOKEN!
 
-    // Gather & validate user input
-    // Paths to be included in the OCI image
-    // const paths: string[] = core.getInput('path').split(' ')
-    const paths: string[] = pathInput.split(' ')
-    let path = ''
-
-    if (paths.length === 1 && fsHelper.isDirectory(paths[0])) {
-      // If the path is a single directory, we can skip the bundling step
-      path = paths[0]
-    } else {
-      // Otherwise, we need to bundle the files & folders into a temporary directory
-      const bundleDir = fsHelper.createTempDir()
-      tmpDirs.push(bundleDir)
-      path = fsHelper.bundleFilesintoDirectory(paths, bundleDir)
+    const { path, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(pathInput)
+    if (needToCleanUpDir) {
+      tmpDirs.push(path)
     }
 
     if (!fsHelper.isActionRepo(path)) {
