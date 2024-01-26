@@ -74693,7 +74693,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.bundleFilesintoDirectory = exports.readFileContents = exports.isActionRepo = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
+exports.readFileContents = exports.isActionRepo = exports.isDirectory = exports.createArchives = exports.getConsolidatedDirectory = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
@@ -74716,6 +74716,24 @@ function removeDir(dir) {
     }
 }
 exports.removeDir = removeDir;
+// TODO: rename this function, it is not state-preserving, so it shouldn't just be called "get'"
+function getConsolidatedDirectory(filePathSpec) {
+    const paths = filePathSpec.split(' '); // TODO: handle files with spaces
+    // TODO: do check on paths to make sure they're valid and not reaching outside the space
+    let consolidatedPath = '';
+    let needToCleanUpDir = false;
+    if (paths.length === 1 && isDirectory(paths[0])) {
+        // If the path is a single directory, we can skip the bundling step
+        consolidatedPath = paths[0];
+    }
+    else {
+        // Otherwise, we need to bundle the files & folders into a temporary directory
+        consolidatedPath = bundleFilesintoDirectory(paths);
+        needToCleanUpDir = true;
+    }
+    return { consolidatedPath, needToCleanUpDir };
+}
+exports.getConsolidatedDirectory = getConsolidatedDirectory;
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
 async function createArchives(distPath, archiveTargetPath = createTempDir()) {
@@ -74734,7 +74752,7 @@ async function createArchives(distPath, archiveTargetPath = createTempDir()) {
             resolve(fileMetadata(zipPath));
         });
         archive.pipe(output);
-        archive.directory(distPath, false);
+        archive.directory(distPath, false); // TODO: make sure this doesn't include dirs that start with ., same with below
         archive.finalize();
     });
     const createTarPromise = new Promise((resolve, reject) => {
@@ -74773,23 +74791,23 @@ function readFileContents(filePath) {
     return fs.readFileSync(filePath);
 }
 exports.readFileContents = readFileContents;
-function bundleFilesintoDirectory(files, targetDir = createTempDir()) {
-    for (const file of files) {
-        if (!fs.existsSync(file)) {
-            throw new Error(`File ${file} does not exist`);
+function bundleFilesintoDirectory(filePaths) {
+    const targetDir = createTempDir();
+    for (const filePath of filePaths) {
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`filePath ${filePath} does not exist`);
         }
-        if (isDirectory(file)) {
-            const targetFolder = path.join(targetDir, path.basename(file));
-            fs_extra_1.default.copySync(file, targetFolder);
+        if (isDirectory(filePath)) {
+            const targetFolder = path.join(targetDir, path.basename(filePath)); // TODO: basename is probably not what we actually want here. Or is it? Maybe conflicts between dir1/dir2 and dir1/dir3/dir2 are just user error or ??
+            fs_extra_1.default.copySync(filePath, targetFolder); // TODO: ignore files preceded by .
         }
         else {
-            const targetFile = path.join(targetDir, path.basename(file));
-            fs.copyFileSync(file, targetFile);
+            const targetFile = path.join(targetDir, path.basename(filePath));
+            fs.copyFileSync(filePath, targetFile);
         }
     }
     return targetDir;
 }
-exports.bundleFilesintoDirectory = bundleFilesintoDirectory;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath) {
     const stats = fs.statSync(filePath);
@@ -74987,7 +75005,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const main_1 = __nccwpck_require__(70399);
 const minimist_1 = __importDefault(__nccwpck_require__(35871));
 const path = (0, minimist_1.default)(process.argv.slice(2)).path || '.';
-console.log(path);
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 (0, main_1.run)(path);
 
@@ -75061,29 +75078,18 @@ async function run(pathInput) {
             return;
         }
         const token = process.env.TOKEN;
-        // Gather & validate user input
-        // Paths to be included in the OCI image
-        // const paths: string[] = core.getInput('path').split(' ')
-        const paths = pathInput.split(' ');
-        let path = '';
-        if (paths.length === 1 && fsHelper.isDirectory(paths[0])) {
-            // If the path is a single directory, we can skip the bundling step
-            path = paths[0];
+        const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(pathInput);
+        if (needToCleanUpDir) {
+            tmpDirs.push(consolidatedPath);
         }
-        else {
-            // Otherwise, we need to bundle the files & folders into a temporary directory
-            const bundleDir = fsHelper.createTempDir();
-            tmpDirs.push(bundleDir);
-            path = fsHelper.bundleFilesintoDirectory(paths, bundleDir);
-        }
-        if (!fsHelper.isActionRepo(path)) {
+        if (!fsHelper.isActionRepo(consolidatedPath)) {
             core.setFailed('action.y(a)ml not found. Action packages can be created only for action repositories.');
             return;
         }
         // Create a temporary directory to store the archives
         const archiveDir = fsHelper.createTempDir();
         tmpDirs.push(archiveDir);
-        const archives = await fsHelper.createArchives(path, archiveDir);
+        const archives = await fsHelper.createArchives(consolidatedPath, archiveDir);
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, targetVersion.raw, new Date());
         // Generate SHA-256 hash of the manifest
         const manifestSHA = crypto_1.default.createHash('sha256');

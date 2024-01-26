@@ -41,23 +41,13 @@ export async function run(pathInput: string): Promise<void> {
 
     const token: string = process.env.TOKEN!
 
-    // Gather & validate user input
-    // Paths to be included in the OCI image
-    // const paths: string[] = core.getInput('path').split(' ')
-    const paths: string[] = pathInput.split(' ')
-    let path = ''
-
-    if (paths.length === 1 && fsHelper.isDirectory(paths[0])) {
-      // If the path is a single directory, we can skip the bundling step
-      path = paths[0]
-    } else {
-      // Otherwise, we need to bundle the files & folders into a temporary directory
-      const bundleDir = fsHelper.createTempDir()
-      tmpDirs.push(bundleDir)
-      path = fsHelper.bundleFilesintoDirectory(paths, bundleDir)
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory(pathInput)
+    if (needToCleanUpDir) {
+      tmpDirs.push(consolidatedPath)
     }
 
-    if (!fsHelper.isActionRepo(path)) {
+    if (!fsHelper.isActionRepo(consolidatedPath)) {
       core.setFailed(
         'action.y(a)ml not found. Action packages can be created only for action repositories.'
       )
@@ -68,7 +58,7 @@ export async function run(pathInput: string): Promise<void> {
     const archiveDir = fsHelper.createTempDir()
     tmpDirs.push(archiveDir)
 
-    const archives = await fsHelper.createArchives(path, archiveDir)
+    const archives = await fsHelper.createArchives(consolidatedPath, archiveDir)
 
     const manifest = ociContainer.createActionPackageManifest(
       archives.tarFile,
