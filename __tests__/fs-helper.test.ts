@@ -153,7 +153,7 @@ describe('isActionRepo', () => {
     expect(fsHelper.isActionRepo(stagingDir)).toEqual(true)
   })
 
-  it('returns false if action.y(a)ml doesn\'t exist at the root', () => {
+  it("returns false if action.y(a)ml doesn't exist at the root", () => {
     fs.writeFileSync(path.join(stagingDir, `action.yaaml`), fileContent)
     expect(fsHelper.isActionRepo(stagingDir)).toEqual(false)
   })

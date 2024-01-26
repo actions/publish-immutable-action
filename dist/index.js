@@ -74693,7 +74693,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.bundleFilesintoDirectory = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
+exports.bundleFilesintoDirectory = exports.readFileContents = exports.isActionRepo = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
@@ -74764,6 +74764,11 @@ function isDirectory(dirPath) {
     return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory();
 }
 exports.isDirectory = isDirectory;
+function isActionRepo(stagingDir) {
+    return (fs.existsSync(path.join(stagingDir, 'action.yml')) ||
+        fs.existsSync(path.join(stagingDir, 'action.yaml')));
+}
+exports.isActionRepo = isActionRepo;
 function readFileContents(filePath) {
     return fs.readFileSync(filePath);
 }
@@ -75052,17 +75057,11 @@ async function run(pathInput) {
         // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
         const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
         if (!targetVersion) {
-            // TODO: We may want to limit semvers to only x.x.x, without the pre-release tags, but for now we'll allow them.
             core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
             return;
         }
         const token = process.env.TOKEN;
-        // TODO: once https://github.com/github/github/pull/309384 goes in, we can switch to the actual endpoint
-        //const response = await fetch(
-        //  process.env.GITHUB_API_URL + '/packages/container-registry-url'
-        //)
-        const response = await fetch('http://echo.jsontest.com/url/https:ghcr.io' // for testing locally. Remove the slashes, they will be reintroduced when forming the URL object below
-        );
+        const response = await fetch(process.env.GITHUB_API_URL + '/packages/container-registry-url');
         if (!response.ok) {
             throw new Error(`Failed to fetch status page: ${response.statusText}`);
         }
@@ -75083,6 +75082,10 @@ async function run(pathInput) {
             const bundleDir = fsHelper.createTempDir();
             tmpDirs.push(bundleDir);
             path = fsHelper.bundleFilesintoDirectory(paths, bundleDir);
+        }
+        if (!fsHelper.isActionRepo(path)) {
+            core.setFailed('action.y(a)ml not found. Action packages can be created only for action repositories.');
+            return;
         }
         // Create a temporary directory to store the archives
         const archiveDir = fsHelper.createTempDir();

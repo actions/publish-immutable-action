@@ -98,7 +98,6 @@ export function isActionRepo(stagingDir: string): boolean {
   )
 }
 
-
 export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
 }
@@ -123,7 +122,6 @@ export function bundleFilesintoDirectory(
 
   return targetDir
 }
-
 
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath: string): Promise<FileMetadata> {
