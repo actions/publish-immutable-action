@@ -85,7 +85,7 @@ export async function run(pathInput: string): Promise<void> {
       .digest('hex')
 
     const response = await fetch(
-      process.env.GITHUB_API_URL + '/packages/container-registry-url'
+      `${process.env.GITHUB_API_URL}/packages/container-registry-url`
     )
     if (!response.ok) {
       throw new Error(`Failed to fetch status page: ${response.statusText}`)
