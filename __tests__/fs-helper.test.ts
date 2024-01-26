@@ -1,5 +1,6 @@
 import * as fsHelper from '../src/fs-helper'
 import * as fs from 'fs'
+import * as path from 'path'
 import * as os from 'os'
 import { execSync } from 'child_process'
 
@@ -128,6 +129,33 @@ describe('isDirectory', () => {
     const tempFile = `${dir}/file.txt`
     fs.writeFileSync(tempFile, fileContent)
     expect(fsHelper.isDirectory(tempFile)).toEqual(false)
+  })
+})
+
+describe('isActionRepo', () => {
+  let stagingDir: string
+
+  beforeEach(() => {
+    stagingDir = fsHelper.createTempDir()
+  })
+
+  afterEach(() => {
+    fs.rmSync(stagingDir, { recursive: true })
+  })
+
+  it('returns true if action.yml exists at the root', () => {
+    fs.writeFileSync(path.join(stagingDir, `action.yml`), fileContent)
+    expect(fsHelper.isActionRepo(stagingDir)).toEqual(true)
+  })
+
+  it('returns true if action.yaml exists at the root', () => {
+    fs.writeFileSync(path.join(stagingDir, `action.yaml`), fileContent)
+    expect(fsHelper.isActionRepo(stagingDir)).toEqual(true)
+  })
+
+  it('returns false if action.y(a)ml doesn\'t exist at the root', () => {
+    fs.writeFileSync(path.join(stagingDir, `action.yaaml`), fileContent)
+    expect(fsHelper.isActionRepo(stagingDir)).toEqual(false)
   })
 })
 

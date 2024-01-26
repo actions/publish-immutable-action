@@ -65,6 +65,13 @@ export async function run(pathInput: string): Promise<void> {
       path = fsHelper.bundleFilesintoDirectory(paths, bundleDir)
     }
 
+    if (!fsHelper.isActionRepo(path)) {
+      core.setFailed(
+        'action.y(a)ml not found. Action packages can be created only for action repositories.'
+      )
+      return
+    }
+
     // Create a temporary directory to store the archives
     const archiveDir = fsHelper.createTempDir()
     tmpDirs.push(archiveDir)
