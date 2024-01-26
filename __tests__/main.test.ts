@@ -23,7 +23,7 @@ let createTempDirMock: jest.SpyInstance
 let isDirectoryMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let removeDirMock: jest.SpyInstance
-let bundleFilesintoDirectoryMock: jest.SpyInstance
+let getConsolidatedDirectoryMock: jest.SpyInstance
 let isActionRepoMock: jest.SpyInstance
 
 // Mock the GHCR Client
@@ -47,8 +47,8 @@ describe('action', () => {
       .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
     removeDirMock = jest.spyOn(fsHelper, 'removeDir').mockImplementation()
-    bundleFilesintoDirectoryMock = jest
-      .spyOn(fsHelper, 'bundleFilesintoDirectory')
+    getConsolidatedDirectoryMock = jest
+      .spyOn(fsHelper, 'getConsolidatedDirectory')
       .mockImplementation()
     isActionRepoMock = jest.spyOn(fsHelper, 'isActionRepo').mockImplementation()
 
@@ -124,7 +124,7 @@ describe('action', () => {
 
     isDirectoryMock.mockImplementation(() => true)
 
-    bundleFilesintoDirectoryMock.mockImplementation(() => {
+    getConsolidatedDirectoryMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
@@ -210,8 +210,8 @@ async function testHappyPath(version: string, path: string): Promise<void> {
   isDirectoryMock.mockImplementation(() => true)
   isActionRepoMock.mockImplementation(() => true)
 
-  bundleFilesintoDirectoryMock.mockImplementation(() => {
-    return '/tmp/test'
+  getConsolidatedDirectoryMock.mockImplementation(() => {
+    return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false } // TODO: I don't understand why I have to name the variables here but not in the implementation code
   })
 
   createTempDirMock.mockImplementation(() => '/tmp/test')

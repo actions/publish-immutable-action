@@ -41,12 +41,13 @@ export async function run(pathInput: string): Promise<void> {
 
     const token: string = process.env.TOKEN!
 
-    const { path, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(pathInput)
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory(pathInput)
     if (needToCleanUpDir) {
-      tmpDirs.push(path)
+      tmpDirs.push(consolidatedPath)
     }
 
-    if (!fsHelper.isActionRepo(path)) {
+    if (!fsHelper.isActionRepo(consolidatedPath)) {
       core.setFailed(
         'action.y(a)ml not found. Action packages can be created only for action repositories.'
       )
@@ -57,7 +58,7 @@ export async function run(pathInput: string): Promise<void> {
     const archiveDir = fsHelper.createTempDir()
     tmpDirs.push(archiveDir)
 
-    const archives = await fsHelper.createArchives(path, archiveDir)
+    const archives = await fsHelper.createArchives(consolidatedPath, archiveDir)
 
     const manifest = ociContainer.createActionPackageManifest(
       archives.tarFile,

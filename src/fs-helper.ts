@@ -29,21 +29,24 @@ export interface FileMetadata {
   sha256: string
 }
 
-export function getConsolidatedDirectory(filePathSpec: string): { path: string, needToCleanUpDir: boolean } {
+export function getConsolidatedDirectory(filePathSpec: string): {
+  consolidatedPath: string
+  needToCleanUpDir: boolean
+} {
   const paths: string[] = filePathSpec.split(' ') // TODO: handle files with spaces
   // TODO: do check on paths to make sure they're valid and not reaching outside the space
-  let path = ''
+  let consolidatedPath = ''
   let needToCleanUpDir = false
   if (paths.length === 1 && isDirectory(paths[0])) {
     // If the path is a single directory, we can skip the bundling step
-    path = paths[0]
+    consolidatedPath = paths[0]
   } else {
     // Otherwise, we need to bundle the files & folders into a temporary directory
-    path = bundleFilesintoDirectory(paths)
+    consolidatedPath = bundleFilesintoDirectory(paths)
     needToCleanUpDir = true
   }
 
-  return { path, needToCleanUpDir }
+  return { consolidatedPath, needToCleanUpDir }
 }
 
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
