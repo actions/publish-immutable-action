@@ -111,7 +111,7 @@ export async function run(pathInput: string): Promise<void> {
     core.setOutput('package-manifest-sha', `sha256:${manifestHash}`)
   } catch (error) {
     // Fail the workflow run if an error occurs
-    // if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) core.setFailed(error.message)
   } finally {
     // Clean up any temporary directories that exist
     for (const tmpDir of tmpDirs) {

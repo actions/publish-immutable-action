@@ -75104,7 +75104,8 @@ async function run(pathInput) {
     }
     catch (error) {
         // Fail the workflow run if an error occurs
-        // if (error instanceof Error) core.setFailed(error.message)
+        if (error instanceof Error)
+            core.setFailed(error.message);
     }
     finally {
         // Clean up any temporary directories that exist
