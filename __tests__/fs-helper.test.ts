@@ -10,7 +10,7 @@ describe('getConsolidatedDirectory', () => {
   let sourceDir: string
 
   beforeAll(() => {
-    sourceDir = fsHelper.createTempDir()
+    sourceDir = `.`// fsHelper.createTempDir()
     fs.mkdirSync(`${sourceDir}/folder1`)
     fs.mkdirSync(`${sourceDir}/folder2`)
     fs.mkdirSync(`${sourceDir}/folder2/folder3`)
@@ -21,32 +21,56 @@ describe('getConsolidatedDirectory', () => {
   })
 
   beforeEach(() => {
-    //tmpDir = fsHelper.createTempDir()
   })
 
   afterEach(() => {
-    //fs.rmSync(tmpDir, { recursive: true })
   })
 
   afterAll(() => {
-    fs.rmSync(sourceDir, { recursive: true })
+    fs.rmSync(`file0.txt`)
+    fs.rmSync(`folder1`, { recursive: true })
+    fs.rmSync(`folder2`, { recursive: true })
   })
 
 
-  if ("returns the directory itself if it is a single directory, and don't clean it up", () => {
+  it("returns the directory itself if it is a single directory, and instructed to not clean it up", () => {
 
+    // We're not really distinguishing between the `publish-action-package` directory and the consumer repo directory.
+    // In real life the consumer repo is differentiated via ... ??
     const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(".")
 
     expect(needToCleanUpDir).toBe(false)
-    expect(consolidatedPath).toBe(sourceDir)
-    expect(fs.existsSync(consolidatedPath)).toBe(true)
-    expect(fs.existsSync(path.join(consolidatedPath, `folder1`))).toBe(true)
+    expect(consolidatedPath).toBe(".")
+    expect(fsHelper.readFileContents(`file0.txt`).toString()).toEqual(fileContent)
+    expect(fsHelper.readFileContents(`folder1/file1.txt`).toString()).toEqual(fileContent)
+    expect(fsHelper.readFileContents(`folder2/file2.txt`).toString()).toEqual(fileContent)
+    expect(fsHelper.readFileContents(`folder2/folder3/file3.txt`).toString()).toEqual(fileContent)
 
-    //TODO: continue here
   })
-  if ("returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up", () => {
+  it('returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up', () => {
+    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("file0.txt folder1")
+
+    expect(needToCleanUpDir).toBe(true)
+    expect(consolidatedPath).not.toBe(".")
+    expect(fsHelper.readFileContents(path.join(consolidatedPath, `file0.txt`)).toString()).toEqual(fileContent)
+    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder1/file1.txt`)).toString()).toEqual(fileContent)
+    expect(fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))).toEqual(false)
+    expect(fs.existsSync(path.join(consolidatedPath, `folder2/folder3/file3.txt`))).toEqual(false)
   })
-  if ("throws an error for illegal path spec", () => {
+
+  it('what happens here?', () => {
+    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder1 folder2/folder3")
+
+    expect(needToCleanUpDir).toBe(true)
+    expect(consolidatedPath).not.toBe(".")
+    expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(false)
+    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder1/file1.txt`)).toString()).toEqual(fileContent)
+    expect(fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))).toEqual(false)
+    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder3/file3.txt`)).toString()).toEqual(fileContent) // <--- This is what I'm unsure of
+  })
+
+  it('throws an error for illegal path spec', () => {
+    // TODO: continue here
   })
   
 /*
@@ -82,11 +106,13 @@ describe('getConsolidatedDirectory', () => {
   })
   */
 
+  /*
   it('throws an error if a file or directory does not exist', () => {
     expect(() => {
       fsHelper.bundleFilesintoDirectory(['/does/not/exist'])
     }).toThrow('File /does/not/exist does not exist')
   })
+  */
 })
 
 describe('createArchives', () => {
