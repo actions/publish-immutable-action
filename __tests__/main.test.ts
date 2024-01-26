@@ -24,6 +24,7 @@ let isDirectoryMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let removeDirMock: jest.SpyInstance
 let bundleFilesintoDirectoryMock: jest.SpyInstance
+let isActionRepoMock: jest.SpyInstance
 
 // Mock the GHCR Client
 let publishOCIArtifactMock: jest.SpyInstance
@@ -49,6 +50,7 @@ describe('action', () => {
     bundleFilesintoDirectoryMock = jest
       .spyOn(fsHelper, 'bundleFilesintoDirectory')
       .mockImplementation()
+    isActionRepoMock = jest.spyOn(fsHelper, 'isActionRepo').mockImplementation()
 
     // GHCR Client mocks
     publishOCIArtifactMock = jest
@@ -61,7 +63,7 @@ describe('action', () => {
     process.env.GITHUB_REPOSITORY = ''
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
@@ -73,7 +75,7 @@ describe('action', () => {
     github.context.eventName = 'push'
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith(
@@ -93,7 +95,7 @@ describe('action', () => {
     }
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith(
@@ -127,7 +129,7 @@ describe('action', () => {
     })
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -153,6 +155,7 @@ describe('action', () => {
     })
 
     isDirectoryMock.mockImplementation(() => true)
+    isActionRepoMock.mockImplementation(() => true)
 
     createTempDirMock.mockImplementation(() => '/tmp/test')
 
@@ -161,7 +164,7 @@ describe('action', () => {
     })
 
     // Run the action
-    await main.run()
+    await main.run('directory')
 
     // Check the results
     expect(isDirectoryMock).toHaveBeenCalledWith('directory')
@@ -205,6 +208,7 @@ async function testHappyPath(version: string, path: string): Promise<void> {
   })
 
   isDirectoryMock.mockImplementation(() => true)
+  isActionRepoMock.mockImplementation(() => true)
 
   bundleFilesintoDirectoryMock.mockImplementation(() => {
     return '/tmp/test'
@@ -232,7 +236,7 @@ async function testHappyPath(version: string, path: string): Promise<void> {
   })
 
   // Run the action
-  await main.run()
+  await main.run(path)
 
   expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
 
