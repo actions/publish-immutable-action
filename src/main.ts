@@ -21,10 +21,12 @@ export async function run(pathInput: string): Promise<void> {
       core.setFailed(`Could not find Repository.`)
       return
     }
+
     if (github.context.eventName !== 'release') {
       core.setFailed('Please ensure you have the workflow trigger as release.')
       return
     }
+
     const releaseId: string = github.context.payload.release.id
     const releaseTag: string = github.context.payload.release.tag_name
     // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
@@ -38,16 +40,6 @@ export async function run(pathInput: string): Promise<void> {
     }
 
     const token: string = process.env.TOKEN!
-
-    const response = await fetch(
-      process.env.GITHUB_API_URL + '/packages/container-registry-url'
-    )
-    if (!response.ok) {
-      throw new Error(`Failed to fetch status page: ${response.statusText}`)
-    }
-    const data = await response.json()
-    const registryURL: URL = new URL(data.url)
-    console.log(`Container registry URL: ${registryURL}`)
 
     // Gather & validate user input
     // Paths to be included in the OCI image
@@ -91,6 +83,16 @@ export async function run(pathInput: string): Promise<void> {
     const manifestHash = manifestSHA
       .update(JSON.stringify(manifest))
       .digest('hex')
+
+    const response = await fetch(
+      process.env.GITHUB_API_URL + '/packages/container-registry-url'
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to fetch status page: ${response.statusText}`)
+    }
+    const data = await response.json()
+    const registryURL: URL = new URL(data.url)
+    console.log(`Container registry URL: ${registryURL}`)
 
     const packageURL = await ghcr.publishOCIArtifact(
       token,
