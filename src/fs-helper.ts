@@ -91,6 +91,13 @@ export function isDirectory(dirPath: string): boolean {
   return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory()
 }
 
+export function isActionRepo(stagingDir: string): boolean {
+  return (
+    fs.existsSync(path.join(stagingDir, 'action.yml')) ||
+    fs.existsSync(path.join(stagingDir, 'action.yaml'))
+  )
+}
+
 export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
 }
