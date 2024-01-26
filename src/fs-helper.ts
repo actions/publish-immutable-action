@@ -119,7 +119,7 @@ export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
 }
 
-export function bundleFilesintoDirectory(filePaths: string[]): string {
+function bundleFilesintoDirectory(filePaths: string[]): string {
   const targetDir: string = createTempDir()
   for (const filePath of filePaths) {
     if (!fs.existsSync(filePath)) {
