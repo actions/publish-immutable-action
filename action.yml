@@ -15,10 +15,13 @@ inputs:
 outputs:
   package-url:
     description: 'The name of package published to GHCR along with semver. For example, https://ghcr.io/actions/package-action:1.0.1'
+    value: ${{steps.publish.outputs.package-url}}
   package-manifest:
     description: 'The package manifest of the published package in JSON format'
+    value: ${{steps.publish.outputs.package-manifest}}
   package-manifest-sha:
     description: 'A sha256 hash of the package manifest'
+    value: ${{steps.publish.outputs.package-manifest-sha}}
 runs:
   using: 'composite'
   steps:
@@ -36,9 +39,6 @@ runs:
         echo "package manifest sha": ${{steps.publish.outputs.package-manifest-sha}}
         echo "package url": ${{steps.publish.outputs.package-url}}
         echo "subject name": ${{github.repository}}_${{github.ref}}
-        echo "package-url=${{steps.publish.outputs.package-url}}" >> $GITHUB_OUTPUT
-        echo "package-manifest=${{steps.publish.outputs.package-manifest}}" >> $GITHUB_OUTPUT
-        echo "package-manifest-sha=${{steps.publish.outputs.package-manifest-sha}}" >> $GITHUB_OUTPUT
     # - name: Generate Provenance Attestation
     #  uses: github-early-access/generate-build-provenance@main
     #  id: build-provenance
