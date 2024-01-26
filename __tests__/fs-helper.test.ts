@@ -6,6 +6,89 @@ import { execSync } from 'child_process'
 
 const fileContent = 'This is the content of the file'
 
+describe('getConsolidatedDirectory', () => {
+  let sourceDir: string
+
+  beforeAll(() => {
+    sourceDir = fsHelper.createTempDir()
+    fs.mkdirSync(`${sourceDir}/folder1`)
+    fs.mkdirSync(`${sourceDir}/folder2`)
+    fs.mkdirSync(`${sourceDir}/folder2/folder3`)
+    fs.writeFileSync(`${sourceDir}/file0.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder1/file1.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder2/file2.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder2/folder3/file3.txt`, fileContent)
+  })
+
+  beforeEach(() => {
+    //tmpDir = fsHelper.createTempDir()
+  })
+
+  afterEach(() => {
+    //fs.rmSync(tmpDir, { recursive: true })
+  })
+
+  afterAll(() => {
+    fs.rmSync(sourceDir, { recursive: true })
+  })
+
+
+  if ("returns the directory itself if it is a single directory, and don't clean it up", () => {
+
+    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(".")
+
+    expect(needToCleanUpDir).toBe(false)
+    expect(consolidatedPath).toBe(sourceDir)
+    expect(fs.existsSync(consolidatedPath)).toBe(true)
+    expect(fs.existsSync(path.join(consolidatedPath, `folder1`))).toBe(true)
+
+    //TODO: continue here
+  })
+  if ("returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up", () => {
+  })
+  if ("throws an error for illegal path spec", () => {
+  })
+  
+/*
+  it('bundles files and folders into a directory', () => {
+    // Create some test files and folders in the sourceDir
+    const file1 = `${sourceDir}/file1.txt`
+    const folder1 = `${sourceDir}/folder1`
+    const file2 = `${folder1}/file2.txt`
+    const folder2 = `${folder1}/folder2`
+    const file3 = `${folder2}/file3.txt`
+
+    fs.mkdirSync(folder1)
+    fs.mkdirSync(folder2)
+    fs.writeFileSync(file1, fileContent)
+    fs.writeFileSync(file2, fileContent)
+    fs.writeFileSync(file3, fileContent)
+
+    // Bundle the files and folders into the targetDir
+    fsHelper.bundleFilesintoDirectory([file1, folder1])
+
+    // Check that the files and folders were copied
+    expect(fs.existsSync(file1)).toEqual(true)
+    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
+
+    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
+
+    expect(fs.existsSync(file2)).toEqual(true)
+    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
+
+    expect(fs.existsSync(`${targetDir}/folder1/folder2`)).toEqual(true)
+    expect(fs.existsSync(file3)).toEqual(true)
+    expect(fsHelper.readFileContents(file3).toString()).toEqual(fileContent)
+  })
+  */
+
+  it('throws an error if a file or directory does not exist', () => {
+    expect(() => {
+      fsHelper.bundleFilesintoDirectory(['/does/not/exist'])
+    }).toThrow('File /does/not/exist does not exist')
+  })
+})
+
 describe('createArchives', () => {
   let tmpDir: string
   let distDir: string
