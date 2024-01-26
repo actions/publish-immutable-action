@@ -75061,13 +75061,6 @@ async function run(pathInput) {
             return;
         }
         const token = process.env.TOKEN;
-        const response = await fetch(process.env.GITHUB_API_URL + '/packages/container-registry-url');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch status page: ${response.statusText}`);
-        }
-        const data = await response.json();
-        const registryURL = new URL(data.url);
-        console.log(`Container registry URL: ${registryURL}`);
         // Gather & validate user input
         // Paths to be included in the OCI image
         // const paths: string[] = core.getInput('path').split(' ')
@@ -75097,6 +75090,13 @@ async function run(pathInput) {
         const manifestHash = manifestSHA
             .update(JSON.stringify(manifest))
             .digest('hex');
+        const response = await fetch(`${process.env.GITHUB_API_URL}/packages/container-registry-url`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch status page: ${response.statusText}`);
+        }
+        const data = await response.json();
+        const registryURL = new URL(data.url);
+        console.log(`Container registry URL: ${registryURL}`);
         const packageURL = await ghcr.publishOCIArtifact(token, registryURL, repository, releaseId.toString(), targetVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
         core.setOutput('package-url', packageURL.toString());
         core.setOutput('package-manifest', JSON.stringify(manifest));
