@@ -34,8 +34,11 @@ describe('getConsolidatedDirectory', () => {
 
 
   it("returns the directory itself if it is a single directory, and instructed to not clean it up", () => {
-    // TODO: We're not really distinguishing between the `publish-action-package` directory and the consumer repo directory.
-    // In real life the consumer repo is differentiated via ... ??
+    // TODO: In these tests, we're not really distinguishing between the `publish-action-package` directory and the consumer repo directory, i.e., they share the same space.
+    // In real life, when the consumer workflow runs, its own javascript is in ., but 
+    // the publish-action-package's code is in ${{github.action_path}}.
+    // So.... I guess to emulate this, we should create a temp directory (representing the consumer repo)
+    // and cd there before the test starts?
     const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(".")
 
     expect(needToCleanUpDir).toBe(false)
