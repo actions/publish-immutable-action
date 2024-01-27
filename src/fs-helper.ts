@@ -29,6 +29,7 @@ export interface FileMetadata {
   sha256: string
 }
 
+// TODO: rename this function, it is not state-preserving, so it shouldn't just be called "get'"
 export function getConsolidatedDirectory(filePathSpec: string): {
   consolidatedPath: string
   needToCleanUpDir: boolean
