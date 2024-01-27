@@ -104,15 +104,13 @@ describe('getConsolidatedDirectory', () => {
 
   it('throws an error for illegal path spec - single', () => {
     expect(() => {
-      const { consolidatedPath, needToCleanUpDir } =
-        fsHelper.getConsolidatedDirectory('folder4')
+      fsHelper.getConsolidatedDirectory('folder4')
     }).toThrow('filePath folder4 does not exist')
   })
 
   it('throws an error for illegal path spec - multiple', () => {
     expect(() => {
-      const { consolidatedPath, needToCleanUpDir } =
-        fsHelper.getConsolidatedDirectory('folder1 folder4')
+      fsHelper.getConsolidatedDirectory('folder1 folder4')
     }).toThrow('filePath folder4 does not exist')
   })
 
@@ -309,57 +307,3 @@ describe('removeDir', () => {
     expect(fs.existsSync(dir)).toEqual(false)
   })
 })
-
-/*
-describe('bundleFilesintoDirectory', () => {
-  let sourceDir: string
-  let targetDir: string
-
-  beforeEach(() => {
-    sourceDir = fsHelper.createTempDir()
-    targetDir = fsHelper.createTempDir()
-  })
-
-  afterEach(() => {
-    fs.rmSync(sourceDir, { recursive: true })
-    fs.rmSync(targetDir, { recursive: true })
-  })
-
-  it('bundles files and folders into a directory', () => {
-    // Create some test files and folders in the sourceDir
-    const file1 = `${sourceDir}/file1.txt`
-    const folder1 = `${sourceDir}/folder1`
-    const file2 = `${folder1}/file2.txt`
-    const folder2 = `${folder1}/folder2`
-    const file3 = `${folder2}/file3.txt`
-
-    fs.mkdirSync(folder1)
-    fs.mkdirSync(folder2)
-    fs.writeFileSync(file1, fileContent)
-    fs.writeFileSync(file2, fileContent)
-    fs.writeFileSync(file3, fileContent)
-
-    // Bundle the files and folders into the targetDir
-    fsHelper.bundleFilesintoDirectory([file1, folder1])
-
-    // Check that the files and folders were copied
-    expect(fs.existsSync(file1)).toEqual(true)
-    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
-
-    expect(fs.existsSync(file2)).toEqual(true)
-    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1/folder2`)).toEqual(true)
-    expect(fs.existsSync(file3)).toEqual(true)
-    expect(fsHelper.readFileContents(file3).toString()).toEqual(fileContent)
-  })
-
-  it('throws an error if a file or directory does not exist', () => {
-    expect(() => {
-      fsHelper.bundleFilesintoDirectory(['/does/not/exist'])
-    }).toThrow('File /does/not/exist does not exist')
-  })
-})
-*/
