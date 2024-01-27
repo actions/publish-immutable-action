@@ -34,8 +34,7 @@ describe('getConsolidatedDirectory', () => {
 
 
   it("returns the directory itself if it is a single directory, and instructed to not clean it up", () => {
-
-    // We're not really distinguishing between the `publish-action-package` directory and the consumer repo directory.
+    // TODO: We're not really distinguishing between the `publish-action-package` directory and the consumer repo directory.
     // In real life the consumer repo is differentiated via ... ??
     const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(".")
 
@@ -66,53 +65,20 @@ describe('getConsolidatedDirectory', () => {
     expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(false)
     expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder1/file1.txt`)).toString()).toEqual(fileContent)
     expect(fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))).toEqual(false)
-    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder3/file3.txt`)).toString()).toEqual(fileContent) // <--- This is what I'm unsure of
+    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder3/file3.txt`)).toString()).toEqual(fileContent) // <--- TODO: This is what I'm unsure of
   })
 
-  it('throws an error for illegal path spec', () => {
-    // TODO: continue here
-  })
-  
-/*
-  it('bundles files and folders into a directory', () => {
-    // Create some test files and folders in the sourceDir
-    const file1 = `${sourceDir}/file1.txt`
-    const folder1 = `${sourceDir}/folder1`
-    const file2 = `${folder1}/file2.txt`
-    const folder2 = `${folder1}/folder2`
-    const file3 = `${folder2}/file3.txt`
-
-    fs.mkdirSync(folder1)
-    fs.mkdirSync(folder2)
-    fs.writeFileSync(file1, fileContent)
-    fs.writeFileSync(file2, fileContent)
-    fs.writeFileSync(file3, fileContent)
-
-    // Bundle the files and folders into the targetDir
-    fsHelper.bundleFilesintoDirectory([file1, folder1])
-
-    // Check that the files and folders were copied
-    expect(fs.existsSync(file1)).toEqual(true)
-    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
-
-    expect(fs.existsSync(file2)).toEqual(true)
-    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1/folder2`)).toEqual(true)
-    expect(fs.existsSync(file3)).toEqual(true)
-    expect(fsHelper.readFileContents(file3).toString()).toEqual(fileContent)
-  })
-  */
-
-  /*
-  it('throws an error if a file or directory does not exist', () => {
+  it('throws an error for illegal path spec - single', () => {
     expect(() => {
-      fsHelper.bundleFilesintoDirectory(['/does/not/exist'])
-    }).toThrow('File /does/not/exist does not exist')
+      const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder4")
+    }).toThrow('filePath folder4 does not exist')
   })
-  */
+
+  it('throws an error for illegal path spec - multiple', () => {
+    expect(() => {
+      const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder1 folder4")
+    }).toThrow('filePath folder4 does not exist')
+  })
 })
 
 describe('createArchives', () => {
