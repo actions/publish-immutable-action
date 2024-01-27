@@ -10,7 +10,7 @@ describe('getConsolidatedDirectory', () => {
   let sourceDir: string
 
   beforeAll(() => {
-    sourceDir = `.`// fsHelper.createTempDir()
+    sourceDir = `.` // fsHelper.createTempDir()
     fs.mkdirSync(`${sourceDir}/folder1`)
     fs.mkdirSync(`${sourceDir}/folder2`)
     fs.mkdirSync(`${sourceDir}/folder2/folder3`)
@@ -20,11 +20,9 @@ describe('getConsolidatedDirectory', () => {
     fs.writeFileSync(`${sourceDir}/folder2/folder3/file3.txt`, fileContent)
   })
 
-  beforeEach(() => {
-  })
+  beforeEach(() => {})
 
-  afterEach(() => {
-  })
+  afterEach(() => {})
 
   afterAll(() => {
     fs.rmSync(`file0.txt`)
@@ -32,54 +30,89 @@ describe('getConsolidatedDirectory', () => {
     fs.rmSync(`folder2`, { recursive: true })
   })
 
-
-  it("returns the directory itself if it is a single directory, and instructed to not clean it up", () => {
+  it('returns the directory itself if it is a single directory, and instructed to not clean it up', () => {
     // TODO: In these tests, we're not really distinguishing between the `publish-action-package` directory and the consumer repo directory, i.e., they share the same space.
-    // In real life, when the consumer workflow runs, its own javascript is in ., but 
+    // In real life, when the consumer workflow runs, its own javascript is in ., but
     // the publish-action-package's code is in ${{github.action_path}}.
     // So.... I guess to emulate this, we should create a temp directory (representing the consumer repo)
     // and cd there before the test starts?
-    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(".")
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('.')
 
     expect(needToCleanUpDir).toBe(false)
-    expect(consolidatedPath).toBe(".")
-    expect(fsHelper.readFileContents(`file0.txt`).toString()).toEqual(fileContent)
-    expect(fsHelper.readFileContents(`folder1/file1.txt`).toString()).toEqual(fileContent)
-    expect(fsHelper.readFileContents(`folder2/file2.txt`).toString()).toEqual(fileContent)
-    expect(fsHelper.readFileContents(`folder2/folder3/file3.txt`).toString()).toEqual(fileContent)
-
+    expect(consolidatedPath).toBe('.')
+    expect(fsHelper.readFileContents(`file0.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(fsHelper.readFileContents(`folder1/file1.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(fsHelper.readFileContents(`folder2/file2.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(
+      fsHelper.readFileContents(`folder2/folder3/file3.txt`).toString()
+    ).toEqual(fileContent)
   })
   it('returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up', () => {
-    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("file0.txt folder1")
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('file0.txt folder1')
 
     expect(needToCleanUpDir).toBe(true)
-    expect(consolidatedPath).not.toBe(".")
-    expect(fsHelper.readFileContents(path.join(consolidatedPath, `file0.txt`)).toString()).toEqual(fileContent)
-    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder1/file1.txt`)).toString()).toEqual(fileContent)
-    expect(fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))).toEqual(false)
-    expect(fs.existsSync(path.join(consolidatedPath, `folder2/folder3/file3.txt`))).toEqual(false)
+    expect(consolidatedPath).not.toBe('.')
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `file0.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
+    ).toEqual(false)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/folder3/file3.txt`))
+    ).toEqual(false)
   })
 
   it('what happens here?', () => {
-    const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder1 folder2/folder3")
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('folder1 folder2/folder3')
 
     expect(needToCleanUpDir).toBe(true)
-    expect(consolidatedPath).not.toBe(".")
-    expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(false)
-    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder1/file1.txt`)).toString()).toEqual(fileContent)
-    expect(fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))).toEqual(false)
-    expect(fsHelper.readFileContents(path.join(consolidatedPath, `folder3/file3.txt`)).toString()).toEqual(fileContent) // <--- TODO: This is what I'm unsure of
+    expect(consolidatedPath).not.toBe('.')
+    expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(
+      false
+    )
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
+    ).toEqual(false)
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder3/file3.txt`))
+        .toString()
+    ).toEqual(fileContent) // <--- TODO: This is what I'm unsure of
   })
 
   it('throws an error for illegal path spec - single', () => {
     expect(() => {
-      const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder4")
+      const { consolidatedPath, needToCleanUpDir } =
+        fsHelper.getConsolidatedDirectory('folder4')
     }).toThrow('filePath folder4 does not exist')
   })
 
   it('throws an error for illegal path spec - multiple', () => {
     expect(() => {
-      const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder1 folder4")
+      const { consolidatedPath, needToCleanUpDir } =
+        fsHelper.getConsolidatedDirectory('folder1 folder4')
     }).toThrow('filePath folder4 does not exist')
   })
 
