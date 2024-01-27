@@ -6,6 +6,117 @@ import { execSync } from 'child_process'
 
 const fileContent = 'This is the content of the file'
 
+describe('getConsolidatedDirectory', () => {
+  let sourceDir: string
+
+  beforeAll(() => {
+    sourceDir = `.` // fsHelper.createTempDir()
+    fs.mkdirSync(`${sourceDir}/folder1`)
+    fs.mkdirSync(`${sourceDir}/folder2`)
+    fs.mkdirSync(`${sourceDir}/folder2/folder3`)
+    fs.writeFileSync(`${sourceDir}/file0.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder1/file1.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder2/file2.txt`, fileContent)
+    fs.writeFileSync(`${sourceDir}/folder2/folder3/file3.txt`, fileContent)
+  })
+
+  beforeEach(() => {})
+
+  afterEach(() => {})
+
+  afterAll(() => {
+    fs.rmSync(`file0.txt`)
+    fs.rmSync(`folder1`, { recursive: true })
+    fs.rmSync(`folder2`, { recursive: true })
+  })
+
+  it('returns the directory itself if it is a single directory, and instructed to not clean it up', () => {
+    // TODO: In these tests, we're not really distinguishing between the `publish-action-package` directory and the consumer repo directory, i.e., they share the same space.
+    // In real life, when the consumer workflow runs, its own javascript is in ., but
+    // the publish-action-package's code is in ${{github.action_path}}.
+    // So.... I guess to emulate this, we should create a temp directory (representing the consumer repo)
+    // and cd there before the test starts?
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('.')
+
+    expect(needToCleanUpDir).toBe(false)
+    expect(consolidatedPath).toBe('.')
+    expect(fsHelper.readFileContents(`file0.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(fsHelper.readFileContents(`folder1/file1.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(fsHelper.readFileContents(`folder2/file2.txt`).toString()).toEqual(
+      fileContent
+    )
+    expect(
+      fsHelper.readFileContents(`folder2/folder3/file3.txt`).toString()
+    ).toEqual(fileContent)
+  })
+  it('returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up', () => {
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('file0.txt folder1')
+
+    expect(needToCleanUpDir).toBe(true)
+    expect(consolidatedPath).not.toBe('.')
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `file0.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
+    ).toEqual(false)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/folder3/file3.txt`))
+    ).toEqual(false)
+  })
+
+  it('what happens here?', () => {
+    const { consolidatedPath, needToCleanUpDir } =
+      fsHelper.getConsolidatedDirectory('folder1 folder2/folder3')
+
+    expect(needToCleanUpDir).toBe(true)
+    expect(consolidatedPath).not.toBe('.')
+    expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(
+      false
+    )
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
+        .toString()
+    ).toEqual(fileContent)
+    expect(
+      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
+    ).toEqual(false)
+    expect(
+      fsHelper
+        .readFileContents(path.join(consolidatedPath, `folder3/file3.txt`))
+        .toString()
+    ).toEqual(fileContent) // <--- TODO: This is what I'm unsure of
+  })
+
+  it('throws an error for illegal path spec - single', () => {
+    expect(() => {
+      fsHelper.getConsolidatedDirectory('folder4')
+    }).toThrow('filePath folder4 does not exist')
+  })
+
+  it('throws an error for illegal path spec - multiple', () => {
+    expect(() => {
+      fsHelper.getConsolidatedDirectory('folder1 folder4')
+    }).toThrow('filePath folder4 does not exist')
+  })
+
+  // TODO: consider doing the thing Michael suggested where we exclude directories starting with .
+})
+
 describe('createArchives', () => {
   let tmpDir: string
   let distDir: string
@@ -194,57 +305,5 @@ describe('removeDir', () => {
   it('removes a directory', () => {
     fsHelper.removeDir(dir)
     expect(fs.existsSync(dir)).toEqual(false)
-  })
-})
-
-describe('bundleFilesintoDirectory', () => {
-  let sourceDir: string
-  let targetDir: string
-
-  beforeEach(() => {
-    sourceDir = fsHelper.createTempDir()
-    targetDir = fsHelper.createTempDir()
-  })
-
-  afterEach(() => {
-    fs.rmSync(sourceDir, { recursive: true })
-    fs.rmSync(targetDir, { recursive: true })
-  })
-
-  it('bundles files and folders into a directory', () => {
-    // Create some test files and folders in the sourceDir
-    const file1 = `${sourceDir}/file1.txt`
-    const folder1 = `${sourceDir}/folder1`
-    const file2 = `${folder1}/file2.txt`
-    const folder2 = `${folder1}/folder2`
-    const file3 = `${folder2}/file3.txt`
-
-    fs.mkdirSync(folder1)
-    fs.mkdirSync(folder2)
-    fs.writeFileSync(file1, fileContent)
-    fs.writeFileSync(file2, fileContent)
-    fs.writeFileSync(file3, fileContent)
-
-    // Bundle the files and folders into the targetDir
-    fsHelper.bundleFilesintoDirectory([file1, folder1], targetDir)
-
-    // Check that the files and folders were copied
-    expect(fs.existsSync(file1)).toEqual(true)
-    expect(fsHelper.readFileContents(file1).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1`)).toEqual(true)
-
-    expect(fs.existsSync(file2)).toEqual(true)
-    expect(fsHelper.readFileContents(file2).toString()).toEqual(fileContent)
-
-    expect(fs.existsSync(`${targetDir}/folder1/folder2`)).toEqual(true)
-    expect(fs.existsSync(file3)).toEqual(true)
-    expect(fsHelper.readFileContents(file3).toString()).toEqual(fileContent)
-  })
-
-  it('throws an error if a file or directory does not exist', () => {
-    expect(() => {
-      fsHelper.bundleFilesintoDirectory(['/does/not/exist'], targetDir)
-    }).toThrow('File /does/not/exist does not exist')
   })
 })

@@ -29,6 +29,27 @@ export interface FileMetadata {
   sha256: string
 }
 
+// TODO: rename this function, it is not state-preserving, so it shouldn't just be called "get'"
+export function getConsolidatedDirectory(filePathSpec: string): {
+  consolidatedPath: string
+  needToCleanUpDir: boolean
+} {
+  const paths: string[] = filePathSpec.split(' ') // TODO: handle files with spaces
+  // TODO: do check on paths to make sure they're valid and not reaching outside the space
+  let consolidatedPath = ''
+  let needToCleanUpDir = false
+  if (paths.length === 1 && isDirectory(paths[0])) {
+    // If the path is a single directory, we can skip the bundling step
+    consolidatedPath = paths[0]
+  } else {
+    // Otherwise, we need to bundle the files & folders into a temporary directory
+    consolidatedPath = bundleFilesintoDirectory(paths)
+    needToCleanUpDir = true
+  }
+
+  return { consolidatedPath, needToCleanUpDir }
+}
+
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
 export async function createArchives(
@@ -55,7 +76,7 @@ export async function createArchives(
     })
 
     archive.pipe(output)
-    archive.directory(distPath, false)
+    archive.directory(distPath, false) // TODO: make sure this doesn't include dirs that start with ., same with below
     archive.finalize()
   })
 
@@ -102,21 +123,19 @@ export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
 }
 
-export function bundleFilesintoDirectory(
-  files: string[],
-  targetDir: string = createTempDir()
-): string {
-  for (const file of files) {
-    if (!fs.existsSync(file)) {
-      throw new Error(`File ${file} does not exist`)
+function bundleFilesintoDirectory(filePaths: string[]): string {
+  const targetDir: string = createTempDir()
+  for (const filePath of filePaths) {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`filePath ${filePath} does not exist`)
     }
 
-    if (isDirectory(file)) {
-      const targetFolder = path.join(targetDir, path.basename(file))
-      fsExtra.copySync(file, targetFolder)
+    if (isDirectory(filePath)) {
+      const targetFolder = path.join(targetDir, path.basename(filePath)) // TODO: basename is probably not what we actually want here. Or is it? Maybe conflicts between dir1/dir2 and dir1/dir3/dir2 are just user error or ??
+      fsExtra.copySync(filePath, targetFolder) // TODO: ignore files preceded by .
     } else {
-      const targetFile = path.join(targetDir, path.basename(file))
-      fs.copyFileSync(file, targetFile)
+      const targetFile = path.join(targetDir, path.basename(filePath))
+      fs.copyFileSync(filePath, targetFile)
     }
   }
 
