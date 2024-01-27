@@ -82,6 +82,8 @@ describe('getConsolidatedDirectory', () => {
       const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory("folder1 folder4")
     }).toThrow('filePath folder4 does not exist')
   })
+
+  // TODO: consider doing the thing Michael suggested where we exclude directories starting with .
 })
 
 describe('createArchives', () => {
