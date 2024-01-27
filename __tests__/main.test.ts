@@ -20,7 +20,6 @@ let setOutputMock: jest.SpyInstance
 
 // Mock the filesystem helper
 let createTempDirMock: jest.SpyInstance
-let isDirectoryMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let removeDirMock: jest.SpyInstance
 let getConsolidatedDirectoryMock: jest.SpyInstance
@@ -42,7 +41,6 @@ describe('action', () => {
     createTempDirMock = jest
       .spyOn(fsHelper, 'createTempDir')
       .mockImplementation()
-    isDirectoryMock = jest.spyOn(fsHelper, 'isDirectory').mockImplementation()
     createArchivesMock = jest
       .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
@@ -122,8 +120,6 @@ describe('action', () => {
       return ''
     })
 
-    isDirectoryMock.mockImplementation(() => true)
-
     getConsolidatedDirectoryMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
@@ -154,7 +150,6 @@ describe('action', () => {
       return ''
     })
 
-  //  isDirectoryMock.mockImplementation(() => true)
     getConsolidatedDirectoryMock.mockImplementation(() => {
       return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false }
     })
@@ -210,7 +205,6 @@ async function testHappyPath(version: string, path: string): Promise<void> {
     return ''
   })
 
-  isDirectoryMock.mockImplementation(() => true)
   isActionRepoMock.mockImplementation(() => true)
 
   getConsolidatedDirectoryMock.mockImplementation(() => {
