@@ -154,7 +154,10 @@ describe('action', () => {
       return ''
     })
 
-    isDirectoryMock.mockImplementation(() => true)
+  //  isDirectoryMock.mockImplementation(() => true)
+    getConsolidatedDirectoryMock.mockImplementation(() => {
+      return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false }
+    })
     isActionRepoMock.mockImplementation(() => true)
 
     createTempDirMock.mockImplementation(() => '/tmp/test')
@@ -167,7 +170,7 @@ describe('action', () => {
     await main.run('directory')
 
     // Check the results
-    expect(isDirectoryMock).toHaveBeenCalledWith('directory')
+    expect(getConsolidatedDirectoryMock).toHaveBeenCalledTimes(1)
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
 
     // Expect the files to be cleaned up
