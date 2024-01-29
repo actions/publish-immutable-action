@@ -109,7 +109,7 @@ export function stageActionFiles(actionDir: string, targetDir: string) {
       }
 
       // Filter out hidden folers like .git and .github
-      return !basename.startsWith('.')
+      return basename === '.' || !basename.startsWith('.')
     }
   })
 

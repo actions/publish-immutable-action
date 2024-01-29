@@ -202,7 +202,7 @@ async function uploadManifest(
     )
   }
 
-  const digestResponseHeader = putResponse.headers['Docker-Content-Digest']
+  const digestResponseHeader = putResponse.headers['docker-content-digest']
   if (digestResponseHeader === undefined) {
     throw new Error(
       `No digest header in response from PUT manifest ${manifestEndpoint}`

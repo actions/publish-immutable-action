@@ -74669,7 +74669,13 @@ ZipStream.prototype.finalize = function() {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
 async function getRepositoryMetadata(repository, token) {
-    const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`);
+    const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json'
+        }
+    });
     if (!response.ok) {
         throw new Error(`Failed to fetch repository metadata due to bad status code: ${response.status}`);
     }
@@ -74678,7 +74684,7 @@ async function getRepositoryMetadata(repository, token) {
     if (!data.id || !data.owner.id) {
         throw new Error(`Failed to fetch repository metadata: unexpected response format`);
     }
-    return { repoId: data.id, ownerId: data.owner.id };
+    return { repoId: String(data.id), ownerId: String(data.owner.id) };
 }
 exports.getRepositoryMetadata = getRepositoryMetadata;
 async function getContainerRegistryURL() {
@@ -74816,7 +74822,7 @@ function stageActionFiles(actionDir, targetDir) {
                 actionYmlFound = true;
             }
             // Filter out hidden folers like .git and .github
-            return !basename.startsWith('.');
+            return basename === '.' || !basename.startsWith('.');
         }
     });
     if (!actionYmlFound) {
@@ -74992,7 +74998,7 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
     }
-    const digestResponseHeader = putResponse.headers['Docker-Content-Digest'];
+    const digestResponseHeader = putResponse.headers['docker-content-digest'];
     if (digestResponseHeader === undefined) {
         throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
     }
@@ -75114,7 +75120,7 @@ async function run(pathInput) {
         const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(token, containerRegistryURL, repository, semanticVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
         core.setOutput('package-url', packageURL.toString());
         core.setOutput('package-manifest', JSON.stringify(manifest));
-        core.setOutput('package-manifest-sha', `sha256:${manifestDigest}`);
+        core.setOutput('package-manifest-sha', manifestDigest);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
