@@ -6,115 +6,65 @@ import { execSync } from 'child_process'
 
 const fileContent = 'This is the content of the file'
 
-describe('getConsolidatedDirectory', () => {
+describe('stageActionFiles', () => {
   let sourceDir: string
+  let stagingDir: string
 
-  beforeAll(() => {
-    sourceDir = `.` // fsHelper.createTempDir()
-    fs.mkdirSync(`${sourceDir}/folder1`)
-    fs.mkdirSync(`${sourceDir}/folder2`)
-    fs.mkdirSync(`${sourceDir}/folder2/folder3`)
-    fs.writeFileSync(`${sourceDir}/file0.txt`, fileContent)
-    fs.writeFileSync(`${sourceDir}/folder1/file1.txt`, fileContent)
-    fs.writeFileSync(`${sourceDir}/folder2/file2.txt`, fileContent)
-    fs.writeFileSync(`${sourceDir}/folder2/folder3/file3.txt`, fileContent)
+  beforeEach(() => {
+    sourceDir = fsHelper.createTempDir()
+    fs.mkdirSync(`${sourceDir}/src`)
+    fs.writeFileSync(`${sourceDir}/src/main.js`, fileContent)
+    fs.writeFileSync(`${sourceDir}/src/other.js`, fileContent)
+
+    stagingDir = fsHelper.createTempDir()
   })
 
-  beforeEach(() => {})
-
-  afterEach(() => {})
-
-  afterAll(() => {
-    fs.rmSync(`file0.txt`)
-    fs.rmSync(`folder1`, { recursive: true })
-    fs.rmSync(`folder2`, { recursive: true })
+  afterEach(() => {
+    fs.rmSync(sourceDir, { recursive: true })
+    fs.rmSync(stagingDir, { recursive: true })
   })
 
-  it('returns the directory itself if it is a single directory, and instructed to not clean it up', () => {
-    // TODO: In these tests, we're not really distinguishing between the `publish-action-package` directory and the consumer repo directory, i.e., they share the same space.
-    // In real life, when the consumer workflow runs, its own javascript is in ., but
-    // the publish-action-package's code is in ${{github.action_path}}.
-    // So.... I guess to emulate this, we should create a temp directory (representing the consumer repo)
-    // and cd there before the test starts?
-    const { consolidatedPath, needToCleanUpDir } =
-      fsHelper.getConsolidatedDirectory('.')
-
-    expect(needToCleanUpDir).toBe(false)
-    expect(consolidatedPath).toBe('.')
-    expect(fsHelper.readFileContents(`file0.txt`).toString()).toEqual(
-      fileContent
+  it('returns an error if no action.yml file is present', () => {
+    expect(() => fsHelper.stageActionFiles(sourceDir, stagingDir)).toThrow(
+      /^No action.yml or action.yaml file found in source repository/
     )
-    expect(fsHelper.readFileContents(`folder1/file1.txt`).toString()).toEqual(
-      fileContent
-    )
-    expect(fsHelper.readFileContents(`folder2/file2.txt`).toString()).toEqual(
-      fileContent
-    )
-    expect(
-      fsHelper.readFileContents(`folder2/folder3/file3.txt`).toString()
-    ).toEqual(fileContent)
-  })
-  it('returns a new directory containing copies of the multiple paths if they are legally specified, and instruct to clean it up', () => {
-    const { consolidatedPath, needToCleanUpDir } =
-      fsHelper.getConsolidatedDirectory('file0.txt folder1')
-
-    expect(needToCleanUpDir).toBe(true)
-    expect(consolidatedPath).not.toBe('.')
-    expect(
-      fsHelper
-        .readFileContents(path.join(consolidatedPath, `file0.txt`))
-        .toString()
-    ).toEqual(fileContent)
-    expect(
-      fsHelper
-        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
-        .toString()
-    ).toEqual(fileContent)
-    expect(
-      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
-    ).toEqual(false)
-    expect(
-      fs.existsSync(path.join(consolidatedPath, `folder2/folder3/file3.txt`))
-    ).toEqual(false)
   })
 
-  it('what happens here?', () => {
-    const { consolidatedPath, needToCleanUpDir } =
-      fsHelper.getConsolidatedDirectory('folder1 folder2/folder3')
+  it('copies all non-hidden files to the staging directory', () => {
+    fs.writeFileSync(`${sourceDir}/action.yml`, fileContent)
 
-    expect(needToCleanUpDir).toBe(true)
-    expect(consolidatedPath).not.toBe('.')
-    expect(fs.existsSync(path.join(consolidatedPath, `file0.txt`))).toEqual(
-      false
-    )
-    expect(
-      fsHelper
-        .readFileContents(path.join(consolidatedPath, `folder1/file1.txt`))
-        .toString()
-    ).toEqual(fileContent)
-    expect(
-      fs.existsSync(path.join(consolidatedPath, `folder2/file2.txt`))
-    ).toEqual(false)
-    expect(
-      fsHelper
-        .readFileContents(path.join(consolidatedPath, `folder3/file3.txt`))
-        .toString()
-    ).toEqual(fileContent) // <--- TODO: This is what I'm unsure of
+    fs.mkdirSync(`${sourceDir}/.git`)
+    fs.writeFileSync(`${sourceDir}/.git/HEAD`, fileContent)
+
+    fs.mkdirSync(`${sourceDir}/.github/workflows`, { recursive: true })
+    fs.writeFileSync(`${sourceDir}/.github/workflows/workflow.yml`, fileContent)
+
+    fsHelper.stageActionFiles(sourceDir, stagingDir)
+    expect(fs.existsSync(`${stagingDir}/action.yml`)).toBe(true)
+    expect(fs.existsSync(`${stagingDir}/src/main.js`)).toBe(true)
+    expect(fs.existsSync(`${stagingDir}/src/other.js`)).toBe(true)
+
+    // Hidden files should not be copied
+    expect(fs.existsSync(`${stagingDir}/.git`)).toBe(false)
+    expect(fs.existsSync(`${stagingDir}/.github`)).toBe(false)
   })
 
-  it('throws an error for illegal path spec - single', () => {
-    expect(() => {
-      fsHelper.getConsolidatedDirectory('folder4')
-    }).toThrow('filePath folder4 does not exist')
+  it('copies all non-hidden files to the staging directory, even if action.yml is in a subdirectory', () => {
+    fs.mkdirSync(`${sourceDir}/my-sub-action`, { recursive: true })
+    fs.writeFileSync(`${sourceDir}/my-sub-action/action.yml`, fileContent)
+
+    fsHelper.stageActionFiles(sourceDir, stagingDir)
+    expect(fs.existsSync(`${stagingDir}/src/main.js`)).toBe(true)
+    expect(fs.existsSync(`${stagingDir}/src/other.js`)).toBe(true)
+    expect(fs.existsSync(`${stagingDir}/my-sub-action/action.yml`)).toBe(true)
   })
 
-  it('throws an error for illegal path spec - multiple', () => {
-    expect(() => {
-      fsHelper.getConsolidatedDirectory('folder1 folder4')
-    }).toThrow('filePath folder4 does not exist')
-  })
+  it('accepts action.yaml as a valid action file as well as action.yml', () => {
+    fs.writeFileSync(`${sourceDir}/action.yaml`, fileContent)
 
-  // TODO: consider doing the thing Michael suggested where we exclude directories starting with .
+    fsHelper.stageActionFiles(sourceDir, stagingDir)
+    expect(fs.existsSync(`${stagingDir}/action.yaml`)).toBe(true)
+  })
 })
 
 describe('createArchives', () => {
@@ -240,33 +190,6 @@ describe('isDirectory', () => {
     const tempFile = `${dir}/file.txt`
     fs.writeFileSync(tempFile, fileContent)
     expect(fsHelper.isDirectory(tempFile)).toEqual(false)
-  })
-})
-
-describe('isActionRepo', () => {
-  let stagingDir: string
-
-  beforeEach(() => {
-    stagingDir = fsHelper.createTempDir()
-  })
-
-  afterEach(() => {
-    fs.rmSync(stagingDir, { recursive: true })
-  })
-
-  it('returns true if action.yml exists at the root', () => {
-    fs.writeFileSync(path.join(stagingDir, `action.yml`), fileContent)
-    expect(fsHelper.isActionRepo(stagingDir)).toEqual(true)
-  })
-
-  it('returns true if action.yaml exists at the root', () => {
-    fs.writeFileSync(path.join(stagingDir, `action.yaml`), fileContent)
-    expect(fsHelper.isActionRepo(stagingDir)).toEqual(true)
-  })
-
-  it("returns false if action.y(a)ml doesn't exist at the root", () => {
-    fs.writeFileSync(path.join(stagingDir, `action.yaaml`), fileContent)
-    expect(fsHelper.isActionRepo(stagingDir)).toEqual(false)
   })
 })
 

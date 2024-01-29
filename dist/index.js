@@ -74661,6 +74661,43 @@ ZipStream.prototype.finalize = function() {
 
 /***/ }),
 
+/***/ 95707:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
+async function getRepositoryMetadata(repository, token) {
+    const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch repository metadata due to bad status code: ${response.status}`);
+    }
+    const data = await response.json();
+    // Check that the response contains the expected data
+    if (!data.id || !data.owner.id) {
+        throw new Error(`Failed to fetch repository metadata: unexpected response format`);
+    }
+    return { repoId: data.id, ownerId: data.owner.id };
+}
+exports.getRepositoryMetadata = getRepositoryMetadata;
+async function getContainerRegistryURL() {
+    const response = await fetch(`${process.env.GITHUB_API_URL}/packages/container-registry-url`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch container registry url due to bad status code: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.url) {
+        throw new Error(`Failed to fetch repository metadata: unexpected response format`);
+    }
+    const registryURL = new URL(data.url);
+    return registryURL;
+}
+exports.getContainerRegistryURL = getContainerRegistryURL;
+
+
+/***/ }),
+
 /***/ 76642:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -74693,7 +74730,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.readFileContents = exports.isActionRepo = exports.isDirectory = exports.createArchives = exports.getConsolidatedDirectory = exports.removeDir = exports.createTempDir = void 0;
+exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
@@ -74716,24 +74753,6 @@ function removeDir(dir) {
     }
 }
 exports.removeDir = removeDir;
-// TODO: rename this function, it is not state-preserving, so it shouldn't just be called "get'"
-function getConsolidatedDirectory(filePathSpec) {
-    const paths = filePathSpec.split(' '); // TODO: handle files with spaces
-    // TODO: do check on paths to make sure they're valid and not reaching outside the space
-    let consolidatedPath = '';
-    let needToCleanUpDir = false;
-    if (paths.length === 1 && isDirectory(paths[0])) {
-        // If the path is a single directory, we can skip the bundling step
-        consolidatedPath = paths[0];
-    }
-    else {
-        // Otherwise, we need to bundle the files & folders into a temporary directory
-        consolidatedPath = bundleFilesintoDirectory(paths);
-        needToCleanUpDir = true;
-    }
-    return { consolidatedPath, needToCleanUpDir };
-}
-exports.getConsolidatedDirectory = getConsolidatedDirectory;
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
 async function createArchives(distPath, archiveTargetPath = createTempDir()) {
@@ -74782,32 +74801,29 @@ function isDirectory(dirPath) {
     return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory();
 }
 exports.isDirectory = isDirectory;
-function isActionRepo(stagingDir) {
-    return (fs.existsSync(path.join(stagingDir, 'action.yml')) ||
-        fs.existsSync(path.join(stagingDir, 'action.yaml')));
-}
-exports.isActionRepo = isActionRepo;
 function readFileContents(filePath) {
     return fs.readFileSync(filePath);
 }
 exports.readFileContents = readFileContents;
-function bundleFilesintoDirectory(filePaths) {
-    const targetDir = createTempDir();
-    for (const filePath of filePaths) {
-        if (!fs.existsSync(filePath)) {
-            throw new Error(`filePath ${filePath} does not exist`);
+// Copy actions files from sourceDir to targetDir, excluding files and folders not relevant to the action
+// Errors if the repo appears to not contain any action files, such as an action.yml file
+function stageActionFiles(actionDir, targetDir) {
+    var actionYmlFound = false;
+    fs_extra_1.default.copySync(actionDir, targetDir, {
+        filter: (src, dest) => {
+            const basename = path.basename(src);
+            if (basename === 'action.yml' || basename === 'action.yaml') {
+                actionYmlFound = true;
+            }
+            // Filter out hidden folers like .git and .github
+            return !basename.startsWith('.');
         }
-        if (isDirectory(filePath)) {
-            const targetFolder = path.join(targetDir, path.basename(filePath)); // TODO: basename is probably not what we actually want here. Or is it? Maybe conflicts between dir1/dir2 and dir1/dir3/dir2 are just user error or ??
-            fs_extra_1.default.copySync(filePath, targetFolder); // TODO: ignore files preceded by .
-        }
-        else {
-            const targetFile = path.join(targetDir, path.basename(filePath));
-            fs.copyFileSync(filePath, targetFile);
-        }
+    });
+    if (!actionYmlFound) {
+        throw new Error(`No action.yml or action.yaml file found in source repository`);
     }
-    return targetDir;
 }
+exports.stageActionFiles = stageActionFiles;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath) {
     const stats = fs.statSync(filePath);
@@ -74873,7 +74889,7 @@ const axios_1 = __importDefault(__nccwpck_require__(88757));
 const fsHelper = __importStar(__nccwpck_require__(76642));
 const axios_debug_log_1 = __importDefault(__nccwpck_require__(79301));
 // Publish the OCI artifact and return the URL where it can be downloaded
-async function publishOCIArtifact(token, registry, repository, releaseId, semver, zipFile, tarFile, manifest, debugRequests = false) {
+async function publishOCIArtifact(token, registry, repository, semver, zipFile, tarFile, manifest, debugRequests = false) {
     if (debugRequests) {
         configureRequestDebugLogging();
     }
@@ -74895,8 +74911,11 @@ async function publishOCIArtifact(token, registry, repository, releaseId, semver
         }
     });
     await Promise.all(layerUploads);
-    await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token);
-    return new URL(`${repository}:${semver}`, registry);
+    const digest = await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token);
+    return {
+        packageURL: new URL(`${repository}:${semver}`, registry),
+        manifestDigest: digest
+    };
 }
 exports.publishOCIArtifact = publishOCIArtifact;
 async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBlobEndpoint, b64Token) {
@@ -74958,6 +74977,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
     }
 }
+// Uploads the manifest and returns the digest returned by GHCR
 async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     core.info(`Uploading manifest to ${manifestEndpoint}.`);
     const putResponse = await axios_1.default.put(manifestEndpoint, manifestJSON, {
@@ -74972,6 +74992,11 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
     }
+    const digestResponseHeader = putResponse.headers['Docker-Content-Digest'];
+    if (digestResponseHeader === undefined) {
+        throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
+    }
+    return digestResponseHeader;
 }
 function configureRequestDebugLogging() {
     (0, axios_debug_log_1.default)({
@@ -75049,8 +75074,8 @@ const github = __importStar(__nccwpck_require__(95438));
 const fsHelper = __importStar(__nccwpck_require__(76642));
 const ociContainer = __importStar(__nccwpck_require__(33207));
 const ghcr = __importStar(__nccwpck_require__(62894));
+const api = __importStar(__nccwpck_require__(95707));
 const semver_1 = __importDefault(__nccwpck_require__(11383));
-const crypto_1 = __importDefault(__nccwpck_require__(6113));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -75058,55 +75083,38 @@ const crypto_1 = __importDefault(__nccwpck_require__(6113));
 async function run(pathInput) {
     const tmpDirs = [];
     try {
-        // Parse and validate Actions execution context, including the repository name, release name and event type
         const repository = process.env.GITHUB_REPOSITORY || '';
         if (repository === '') {
             core.setFailed(`Could not find Repository.`);
             return;
         }
-        if (github.context.eventName !== 'release') {
-            core.setFailed('Please ensure you have the workflow trigger as release.');
+        const token = process.env.TOKEN || '';
+        const sourceCommit = process.env.GITHUB_SHA || '';
+        if (token === '') {
+            core.setFailed(`Could not find GITHUB_TOKEN.`);
             return;
         }
-        const releaseId = github.context.payload.release.id;
-        const releaseTag = github.context.payload.release.tag_name;
-        // Strip any leading 'v' from the tag in case the release format is e.g. 'v1.0.0' as recommended by GitHub docs
-        // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
-        const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
-        if (!targetVersion) {
-            core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
+        if (sourceCommit === '') {
+            core.setFailed(`Could not find source commit.`);
             return;
         }
-        const token = process.env.TOKEN;
-        const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(pathInput);
-        if (needToCleanUpDir) {
-            tmpDirs.push(consolidatedPath);
-        }
-        if (!fsHelper.isActionRepo(consolidatedPath)) {
-            core.setFailed('action.y(a)ml not found. Action packages can be created only for action repositories.');
-            return;
-        }
+        const semanticVersion = parseSourceSemanticVersion();
+        // Create a temporary directory to stage files for packaging in archives
+        const stagedActionFilesDir = fsHelper.createTempDir();
+        tmpDirs.push(stagedActionFilesDir);
+        fsHelper.stageActionFiles('.', stagedActionFilesDir);
         // Create a temporary directory to store the archives
         const archiveDir = fsHelper.createTempDir();
         tmpDirs.push(archiveDir);
-        const archives = await fsHelper.createArchives(consolidatedPath, archiveDir);
-        const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, targetVersion.raw, new Date());
-        // Generate SHA-256 hash of the manifest
-        const manifestSHA = crypto_1.default.createHash('sha256');
-        const manifestHash = manifestSHA
-            .update(JSON.stringify(manifest))
-            .digest('hex');
-        const response = await fetch(`${process.env.GITHUB_API_URL}/packages/container-registry-url`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch status page: ${response.statusText}`);
-        }
-        const data = await response.json();
-        const registryURL = new URL(data.url);
-        console.log(`Container registry URL: ${registryURL}`);
-        const packageURL = await ghcr.publishOCIArtifact(token, registryURL, repository, releaseId.toString(), targetVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
+        const archives = await fsHelper.createArchives(stagedActionFilesDir, archiveDir);
+        const { repoId, ownerId } = await api.getRepositoryMetadata(repository, token);
+        const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, repoId, ownerId, sourceCommit, semanticVersion.raw, new Date());
+        const containerRegistryURL = await api.getContainerRegistryURL();
+        console.log(`Container registry URL: ${containerRegistryURL}`);
+        const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(token, containerRegistryURL, repository, semanticVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
         core.setOutput('package-url', packageURL.toString());
         core.setOutput('package-manifest', JSON.stringify(manifest));
-        core.setOutput('package-manifest-sha', `sha256:${manifestHash}`);
+        core.setOutput('package-manifest-sha', `sha256:${manifestDigest}`);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -75123,6 +75131,29 @@ async function run(pathInput) {
     }
 }
 exports.run = run;
+// This action can be triggered by release events or tag push events.
+// In each case, the source event should produce a Semantic Version compliant tag representing the code to be packaged.
+function parseSourceSemanticVersion() {
+    const event = github.context.eventName;
+    var semverTag = '';
+    // Grab the raw tag
+    if (event === 'release')
+        semverTag = github.context.payload.release.tag_name;
+    else if (event === 'push' && github.context.ref.startsWith('refs/tags/')) {
+        semverTag = github.context.ref.replace(/^refs\/tags\//, '');
+    }
+    else {
+        throw new Error(`This action can only be triggered by release events or tag push events.`);
+    }
+    if (semverTag === '') {
+        throw new Error(`Could not find a Semantic Version tag in the event payload.`);
+    }
+    const semanticVersion = semver_1.default.parse(semverTag.replace(/^v/, ''));
+    if (!semanticVersion) {
+        throw new Error(`${semverTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
+    }
+    return semanticVersion;
+}
 
 
 /***/ }),
@@ -75135,7 +75166,7 @@ exports.run = run;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createActionPackageManifest = void 0;
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.
-function createActionPackageManifest(tarFile, zipFile, repository, version, created) {
+function createActionPackageManifest(tarFile, zipFile, repository, repoId, ownerId, sourceCommit, version, created) {
     const configLayer = createConfigLayer();
     const sanitizedRepo = sanitizeRepository(repository);
     const tarLayer = createTarLayer(tarFile, sanitizedRepo, version);
@@ -75143,14 +75174,18 @@ function createActionPackageManifest(tarFile, zipFile, repository, version, crea
     const manifest = {
         schemaVersion: 2,
         mediaType: 'application/vnd.oci.image.manifest.v1+json',
-        artifactType: 'application/vnd.oci.image.manifest.v1+json',
+        artifactType: 'application/vnd.github.actions.package.v1+json',
         config: configLayer,
         layers: [configLayer, tarLayer, zipLayer],
         annotations: {
             'org.opencontainers.image.created': created.toISOString(),
             'action.tar.gz.digest': tarFile.sha256,
             'action.zip.digest': zipFile.sha256,
-            'com.github.package.type': 'actions_oci_pkg'
+            'com.github.package.type': 'actions_oci_pkg',
+            'com.github.package.version': version,
+            'com.github.source.repo.id': repoId,
+            'com.github.source.repo.owner.id': ownerId,
+            'com.github.source.commit': sourceCommit
         }
     };
     return manifest;

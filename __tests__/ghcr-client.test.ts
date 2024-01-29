@@ -115,6 +115,14 @@ describe('publishOCIArtifact', () => {
     // Simulate successful upload of all blobs & then the manifest
     axiosPutMock.mockImplementation(async (url, data, config) => {
       validateRequestConfig(201, url, config)
+
+      if ((url as string).includes('manifest')) {
+        return {
+          status: 201,
+          headers: { 'Docker-Content-Digest': '1234567678' }
+        }
+      }
+
       return {
         status: 201
       }
@@ -124,7 +132,6 @@ describe('publishOCIArtifact', () => {
       token,
       registry,
       repository,
-      releaseId,
       semver,
       zipFile,
       tarFile,
@@ -164,6 +171,14 @@ describe('publishOCIArtifact', () => {
     // Simulate successful upload of all blobs & then the manifest
     axiosPutMock.mockImplementation(async (url, data, config) => {
       validateRequestConfig(201, url, config)
+
+      if ((url as string).includes('manifest')) {
+        return {
+          status: 201,
+          headers: { 'Docker-Content-Digest': '1234567678' }
+        }
+      }
+
       return {
         status: 201
       }
@@ -173,7 +188,6 @@ describe('publishOCIArtifact', () => {
       token,
       registry,
       repository,
-      releaseId,
       semver,
       zipFile,
       tarFile,
@@ -226,6 +240,14 @@ describe('publishOCIArtifact', () => {
     // Simulate successful upload of all blobs & then the manifest
     axiosPutMock.mockImplementation(async (url, data, config) => {
       validateRequestConfig(201, url, config)
+
+      if ((url as string).includes('manifest')) {
+        return {
+          status: 201,
+          headers: { 'Docker-Content-Digest': '1234567678' }
+        }
+      }
+
       return {
         status: 201
       }
@@ -235,7 +257,6 @@ describe('publishOCIArtifact', () => {
       token,
       registry,
       repository,
-      releaseId,
       semver,
       zipFile,
       tarFile,
@@ -262,7 +283,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -293,7 +313,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -325,7 +344,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -372,7 +390,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -426,7 +443,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -473,7 +489,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,
@@ -497,7 +512,6 @@ describe('publishOCIArtifact', () => {
         token,
         registry,
         repository,
-        releaseId,
         semver,
         zipFile,
         tarFile,

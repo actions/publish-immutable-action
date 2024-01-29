@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createActionPackageManifest = void 0;
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.
-function createActionPackageManifest(tarFile, zipFile, repository, version, created) {
+function createActionPackageManifest(tarFile, zipFile, repository, repoId, ownerId, sourceCommit, version, created) {
     const configLayer = createConfigLayer();
     const sanitizedRepo = sanitizeRepository(repository);
     const tarLayer = createTarLayer(tarFile, sanitizedRepo, version);
@@ -10,14 +10,18 @@ function createActionPackageManifest(tarFile, zipFile, repository, version, crea
     const manifest = {
         schemaVersion: 2,
         mediaType: 'application/vnd.oci.image.manifest.v1+json',
-        artifactType: 'application/vnd.oci.image.manifest.v1+json',
+        artifactType: 'application/vnd.github.actions.package.v1+json',
         config: configLayer,
         layers: [configLayer, tarLayer, zipLayer],
         annotations: {
             'org.opencontainers.image.created': created.toISOString(),
             'action.tar.gz.digest': tarFile.sha256,
             'action.zip.digest': zipFile.sha256,
-            'com.github.package.type': 'actions_oci_pkg'
+            'com.github.package.type': 'actions_oci_pkg',
+            'com.github.package.version': version,
+            'com.github.source.repo.id': repoId,
+            'com.github.source.repo.owner.id': ownerId,
+            'com.github.source.commit': sourceCommit,
         }
     };
     return manifest;
