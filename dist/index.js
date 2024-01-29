@@ -74669,7 +74669,13 @@ ZipStream.prototype.finalize = function() {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
 async function getRepositoryMetadata(repository, token) {
-    const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`);
+    const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+        }
+    });
     if (!response.ok) {
         throw new Error(`Failed to fetch repository metadata due to bad status code: ${response.status}`);
     }
