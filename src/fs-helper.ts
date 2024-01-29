@@ -5,6 +5,7 @@ import * as tar from 'tar'
 import * as archiver from 'archiver'
 import * as crypto from 'crypto'
 import * as os from 'os'
+import * as core from '@actions/core'
 
 export function createTempDir(): string {
   const randomDirName = crypto.randomBytes(4).toString('hex')
@@ -100,9 +101,12 @@ export function readFileContents(filePath: string): Buffer {
 export function stageActionFiles(actionDir: string, targetDir: string) {
   var actionYmlFound = false
 
+  core.log(`Staging action files from ${actionDir} to ${targetDir}`)
+
   fsExtra.copySync(actionDir, targetDir, {
     filter: (src: string, dest: string) => {
       const basename = path.basename(src)
+      core.log(`Copying ${src} to ${dest}, basename: ${basename}`)
 
       if (basename === 'action.yml' || basename === 'action.yaml') {
         actionYmlFound = true
