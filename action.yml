@@ -39,10 +39,10 @@ runs:
         echo "package manifest sha": ${{steps.publish.outputs.package-manifest-sha}}
         echo "package url": ${{steps.publish.outputs.package-url}}
         echo "subject name": ${{github.repository}}_${{github.ref}}
-    # - name: Generate Provenance Attestation
-    #  uses: github-early-access/generate-build-provenance@main
-    #  id: build-provenance
-    #  with:
-    #    subject-name: ${{github.repository}}_${{github.ref}}
-    #    subject-digest: ${{steps.publish.outputs.package-manifest-sha}}
-    #    push-to-registry: false
+    - name: Generate Provenance Attestation
+     uses: github-early-access/generate-build-provenance@main
+     id: build-provenance
+     with:
+       subject-name: ${{github.repository}}_${{github.ref}}
+       subject-digest: ${{steps.publish.outputs.package-manifest-sha}}
+       push-to-registry: false
