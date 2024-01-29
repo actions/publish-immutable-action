@@ -10,13 +10,12 @@ export async function publishOCIArtifact(
   token: string,
   registry: URL,
   repository: string,
-  releaseId: string,
   semver: string,
   zipFile: FileMetadata,
   tarFile: FileMetadata,
   manifest: ociContainer.Manifest,
   debugRequests = false
-): Promise<URL> {
+): Promise<{ packageURL: URL; manifestDigest: string }> {
   if (debugRequests) {
     configureRequestDebugLogging()
   }
@@ -76,9 +75,16 @@ export async function publishOCIArtifact(
 
   await Promise.all(layerUploads)
 
-  await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token)
+  const digest = await uploadManifest(
+    JSON.stringify(manifest),
+    manifestEndpoint,
+    b64Token
+  )
 
-  return new URL(`${repository}:${semver}`, registry)
+  return {
+    packageURL: new URL(`${repository}:${semver}`, registry),
+    manifestDigest: digest
+  }
 }
 
 async function uploadLayer(
@@ -172,11 +178,12 @@ async function uploadLayer(
   }
 }
 
+// Uploads the manifest and returns the digest returned by GHCR
 async function uploadManifest(
   manifestJSON: string,
   manifestEndpoint: string,
   b64Token: string
-): Promise<void> {
+): Promise<string> {
   core.info(`Uploading manifest to ${manifestEndpoint}.`)
 
   const putResponse = await axios.put(manifestEndpoint, manifestJSON, {
@@ -194,6 +201,15 @@ async function uploadManifest(
       `Unexpected response from PUT manifest ${putResponse.status}`
     )
   }
+
+  const digestResponseHeader = putResponse.headers['Docker-Content-Digest']
+  if (digestResponseHeader === undefined) {
+    throw new Error(
+      `No digest header in response from PUT manifest ${manifestEndpoint}`
+    )
+  }
+
+  return digestResponseHeader
 }
 
 function configureRequestDebugLogging(): void {

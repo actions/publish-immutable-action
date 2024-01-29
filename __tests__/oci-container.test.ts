@@ -7,6 +7,9 @@ describe('createActionPackageManifest', () => {
     const repo = 'test-org/test-repo'
     const sanitizedRepo = 'test-org-test-repo'
     const version = '1.2.3'
+    const repoId = '123'
+    const ownerId = '456'
+    const sourceCommit = 'abc'
     const tarFile: FileMetadata = {
       path: '/test/test/test.tar.gz',
       sha256: 'tarSha',
@@ -21,7 +24,7 @@ describe('createActionPackageManifest', () => {
     const expectedJSON = `{
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
-            "artifactType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactType": "application/vnd.github.actions.package.v1+json",
             "config": {
                 "mediaType": "application/vnd.github.actions.package.config.v1+json",
                 "size": 0,
@@ -60,7 +63,11 @@ describe('createActionPackageManifest', () => {
                 "org.opencontainers.image.created":"${date.toISOString()}",
                 "action.tar.gz.digest":"${tarFile.sha256}",
                 "action.zip.digest":"${zipFile.sha256}",
-                "com.github.package.type":"actions_oci_pkg"
+                "com.github.package.type":"actions_oci_pkg",
+                "com.github.package.version":"1.2.3",
+                "com.github.source.repo.id":"123",
+                "com.github.source.repo.owner.id":"456",
+                "com.github.source.commit":"abc"
             }
         }`
 
@@ -76,6 +83,9 @@ describe('createActionPackageManifest', () => {
         sha256: zipFile.sha256
       },
       repo,
+      repoId,
+      ownerId,
+      sourceCommit,
       version,
       date
     )

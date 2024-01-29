@@ -12,6 +12,7 @@ import * as github from '@actions/github'
 
 import * as fsHelper from '../src/fs-helper'
 import * as ghcr from '../src/ghcr-client'
+import * as api from '../src/api-client'
 
 // Mock the GitHub Actions core library
 let getInputMock: jest.SpyInstance
@@ -22,13 +23,16 @@ let setOutputMock: jest.SpyInstance
 let createTempDirMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let removeDirMock: jest.SpyInstance
-let getConsolidatedDirectoryMock: jest.SpyInstance
-let isActionRepoMock: jest.SpyInstance
+let stageActionFilesMock: jest.SpyInstance
 
 // Mock the GHCR Client
 let publishOCIArtifactMock: jest.SpyInstance
 
-describe('action', () => {
+// Mock the API Client
+let getContainerRegistryURLMock: jest.SpyInstance
+let getRepositoryMetadataMock: jest.SpyInstance
+
+describe('run', () => {
   beforeEach(() => {
     jest.clearAllMocks()
 
@@ -45,14 +49,22 @@ describe('action', () => {
       .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
     removeDirMock = jest.spyOn(fsHelper, 'removeDir').mockImplementation()
-    getConsolidatedDirectoryMock = jest
-      .spyOn(fsHelper, 'getConsolidatedDirectory')
+    stageActionFilesMock = jest
+      .spyOn(fsHelper, 'stageActionFiles')
       .mockImplementation()
-    isActionRepoMock = jest.spyOn(fsHelper, 'isActionRepo').mockImplementation()
 
     // GHCR Client mocks
     publishOCIArtifactMock = jest
       .spyOn(ghcr, 'publishOCIArtifact')
+      .mockImplementation()
+
+    // API Client mocks
+    getContainerRegistryURLMock = jest
+      .spyOn(api, 'getContainerRegistryURL')
+      .mockImplementation()
+
+    getRepositoryMetadataMock = jest
+      .spyOn(api, 'getRepositoryMetadata')
       .mockImplementation()
   })
 
@@ -67,202 +79,316 @@ describe('action', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
   })
 
-  it('fails if event is not a release', async () => {
+  it('fails if no token found', async () => {
     // Mock the environment
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'push'
+    process.env.TOKEN = ''
 
     // Run the action
     await main.run('directory1 directory2')
 
     // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith(
-      'Please ensure you have the workflow trigger as release.'
-    )
+    expect(setFailedMock).toHaveBeenCalledWith('Could not find GITHUB_TOKEN.')
   })
 
-  it('fails if release tag is not a valid semantic version', async () => {
+  it('fails if no source commit found', async () => {
     // Mock the environment
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'invalid-tag'
-      }
+    process.env.TOKEN = 'test'
+    process.env.GITHUB_SHA = ''
+
+    // Run the action
+    await main.run('')
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Could not find source commit.')
+  })
+
+  it('fails if trigger is not release or tag push', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+
+    // TODO: If we want we can add all of these: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+    const invalidEvents = ['workflow_dispatch, pull_request, schedule']
+    for (const event of invalidEvents) {
+      github.context.eventName = event
+      await main.run('')
+      expect(setFailedMock).toHaveBeenCalledWith(
+        'This action can only be triggered by release events or tag push events.'
+      )
     }
+  })
 
-    // Run the action
-    await main.run('directory1 directory2')
+  it('fails if the trigger is a push, but not a tag push', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.eventName = 'push'
+    github.context.ref = 'refs/heads/main' // This is a branch, not a tag
 
-    // Check the results
+    await main.run('')
+
     expect(setFailedMock).toHaveBeenCalledWith(
-      'invalid-tag is not a valid semantic version, and so cannot be uploaded as an Immutable Action.'
+      'This action can only be triggered by release events or tag push events.'
     )
   })
 
-  it('fails if multiple paths are provided and staging files fails', async () => {
+  it('fails if the value of the tag input is not a valid semver', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.eventName = 'release'
+
+    const tags = ['test', 'v1.0', 'chicken', '111111']
+
+    for (const tag of tags) {
+      github.context.payload = {
+        release: {
+          id: '123',
+          tag_name: tag
+        }
+      }
+
+      await main.run('')
+      expect(setFailedMock).toHaveBeenCalledWith(
+        `${tag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
+      )
+    }
+  })
+
+  it('fails if staging files fails', async () => {
     // Mock the environment
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
     github.context.payload = {
       release: {
         id: '123',
         tag_name: 'v1.2.3'
       }
     }
-    getInputMock.mockImplementation((name: string) => {
-      if (name === 'path') {
-        return 'directory1 directory2'
-      } else if (name === 'registry') {
-        return 'https://ghcr.io'
-      }
-      return ''
-    })
 
-    getConsolidatedDirectoryMock.mockImplementation(() => {
+    stageActionFilesMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
     // Run the action
-    await main.run('directory1 directory2')
+    await main.run('')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('fails if an error is thrown from dependent code', async () => {
+  it('fails if creating temp directory fails', async () => {
     // Mock the environment
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
     github.context.payload = {
       release: {
         id: '123',
         tag_name: 'v1.2.3'
       }
     }
-    getInputMock.mockImplementation((name: string) => {
-      if (name === 'path') {
-        return 'directory'
-      } else if (name === 'registry') {
-        return 'https://ghcr.io'
+
+    createTempDirMock.mockImplementation(() => {
+      throw new Error('Something went wrong')
+    })
+
+    // Run the action
+    await main.run('')
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
+  })
+
+  it('fails if creating archives fails', async () => {
+    // Mock the environment
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.payload = {
+      release: {
+        id: '123',
+        tag_name: 'v1.2.3'
       }
-      return ''
-    })
-
-    getConsolidatedDirectoryMock.mockImplementation(() => {
-      return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false }
-    })
-    isActionRepoMock.mockImplementation(() => true)
-
-    createTempDirMock.mockImplementation(() => '/tmp/test')
+    }
 
     createArchivesMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
     // Run the action
-    await main.run('directory')
+    await main.run('')
 
     // Check the results
-    expect(getConsolidatedDirectoryMock).toHaveBeenCalledTimes(1)
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
-
-    // Expect the files to be cleaned up
-    expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
   })
 
-  it('successfully uploads if the release tag is a semver without v prefix', async () => {
-    await testHappyPath('1.2.3', 'test')
-  })
-
-  it('successfully uploads if the release tag is a semver with v prefix', async () => {
-    await testHappyPath('v1.2.3', 'test')
-  })
-
-  it('successfully uploads if multiple paths are provided', async () => {
-    await testHappyPath('v1.2.3', 'test test2')
-  })
-})
-
-// Test that main successfully uploads and returns the manifest & package URL
-async function testHappyPath(version: string, path: string): Promise<void> {
-  // Mock the environment
-  process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-  github.context.eventName = 'release'
-  github.context.payload = {
-    release: {
-      id: '123',
-      tag_name: version
-    }
-  }
-  getInputMock.mockImplementation((name: string) => {
-    if (name === 'path') {
-      return path
-    } else if (name === 'registry') {
-      return 'https://ghcr.io'
-    }
-    return ''
-  })
-
-  isActionRepoMock.mockImplementation(() => true)
-
-  getConsolidatedDirectoryMock.mockImplementation(() => {
-    return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false } // TODO: I don't understand why I have to name the variables here but not in the implementation code
-  })
-
-  createTempDirMock.mockImplementation(() => '/tmp/test')
-
-  createArchivesMock.mockImplementation(() => {
-    return {
-      zipFile: {
-        path: 'test',
-        size: 5,
-        sha256: '123'
-      },
-      tarFile: {
-        path: 'test2',
-        size: 52,
-        sha256: '1234'
+  it('fails if getting container registry URL fails', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.payload = {
+      release: {
+        id: '123',
+        tag_name: 'v1.2.3'
       }
     }
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    getRepositoryMetadataMock.mockImplementation(() => {
+      return { repoId: 'test', ownerId: 'test' }
+    })
+
+    getContainerRegistryURLMock.mockImplementation(() => {
+      throw new Error('Something went wrong')
+    })
+
+    // Run the action
+    await main.run('')
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  publishOCIArtifactMock.mockImplementation(() => {
-    return new URL('https://ghcr.io/v2/test-org/test-repo:1.2.3')
+  it('fails if publishing OCI artifact fails', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.payload = {
+      release: {
+        id: '123',
+        tag_name: 'v1.2.3'
+      }
+    }
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    getRepositoryMetadataMock.mockImplementation(() => {
+      return { repoId: 'test', ownerId: 'test' }
+    })
+
+    getContainerRegistryURLMock.mockImplementation(() => {
+      return new URL('https://ghcr.io')
+    })
+
+    publishOCIArtifactMock.mockImplementation(() => {
+      throw new Error('Something went wrong')
+    })
+
+    // Run the action
+    await main.run('')
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  // Run the action
-  await main.run(path)
+  it('uploads the artifact, returns package metadata from GHCR, and cleans up tmp dirs', async () => {
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    github.context.eventName = 'release'
+    process.env.GITHUB_SHA = 'test-sha'
+    process.env.TOKEN = 'token'
+    github.context.payload = {
+      release: {
+        id: '123',
+        tag_name: 'v1.2.3'
+      }
+    }
 
-  expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+    createTempDirMock.mockImplementation(() => '/tmp/test')
 
-  // Check manifest is in output
-  expect(setOutputMock).toHaveBeenCalledWith(
-    'package-url',
-    'https://ghcr.io/v2/test-org/test-repo:1.2.3'
-  )
-  expect(setOutputMock).toHaveBeenCalledWith(
-    'package-manifest',
-    expect.any(String)
-  )
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
 
-  // Validate the manifest
-  const manifest = JSON.parse(setOutputMock.mock.calls[1][1])
-  expect(manifest.mediaType).toEqual(
-    'application/vnd.oci.image.manifest.v1+json'
-  )
-  expect(manifest.config.mediaType).toEqual(
-    'application/vnd.github.actions.package.config.v1+json'
-  )
-  expect(manifest.layers.length).toEqual(3)
-  expect(manifest.annotations['com.github.package.type']).toEqual(
-    'actions_oci_pkg'
-  )
+    getRepositoryMetadataMock.mockImplementation(() => {
+      return { repoId: 'test', ownerId: 'test' }
+    })
 
-  // Expect all the temp files to be cleaned up
-  expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
-  expect(removeDirMock).toHaveBeenCalledTimes(
-    createTempDirMock.mock.calls.length
-  )
-}
+    getContainerRegistryURLMock.mockImplementation(() => {
+      return new URL('https://ghcr.io')
+    })
+
+    publishOCIArtifactMock.mockImplementation(() => {
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        manifestDigest: 'my-test-digest'
+      }
+    })
+
+    // Run the action
+    await main.run('')
+
+    // Check the results
+    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+
+    // Check outputs
+    expect(setOutputMock).toHaveBeenCalledTimes(3)
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-url',
+      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest',
+      expect.any(String)
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest-sha',
+      'sha256:my-test-digest'
+    )
+
+    // Expect all the temp files to be cleaned up
+    expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
+    expect(removeDirMock).toHaveBeenCalledTimes(
+      createTempDirMock.mock.calls.length
+    )
+  })
+})

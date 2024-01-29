@@ -26,7 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bundleFilesintoDirectory = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
+exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(require("fs"));
 const fs_extra_1 = __importDefault(require("fs-extra"));
 const path = __importStar(require("path"));
@@ -67,7 +67,7 @@ async function createArchives(distPath, archiveTargetPath = createTempDir()) {
             resolve(fileMetadata(zipPath));
         });
         archive.pipe(output);
-        archive.directory(distPath, false);
+        archive.directory(distPath, false); // TODO: make sure this doesn't include dirs that start with ., same with below
         archive.finalize();
     });
     const createTarPromise = new Promise((resolve, reject) => {
@@ -101,23 +101,25 @@ function readFileContents(filePath) {
     return fs.readFileSync(filePath);
 }
 exports.readFileContents = readFileContents;
-function bundleFilesintoDirectory(files, targetDir = createTempDir()) {
-    for (const file of files) {
-        if (!fs.existsSync(file)) {
-            throw new Error(`File ${file} does not exist`);
+// Copy actions files from sourceDir to targetDir, excluding files and folders not relevant to the action
+// Errors if the repo appears to not contain any action files, such as an action.yml file
+function stageActionFiles(actionDir, targetDir) {
+    var actionYmlFound = false;
+    fs_extra_1.default.copySync(actionDir, targetDir, {
+        filter: (src, dest) => {
+            const basename = path.basename(src);
+            if (basename === 'action.yml' || basename === 'action.yaml') {
+                actionYmlFound = true;
+            }
+            // Filter out hidden folers like .git and .github
+            return !basename.startsWith('.');
         }
-        if (isDirectory(file)) {
-            const targetFolder = path.join(targetDir, path.basename(file));
-            fs_extra_1.default.copySync(file, targetFolder);
-        }
-        else {
-            const targetFile = path.join(targetDir, path.basename(file));
-            fs.copyFileSync(file, targetFile);
-        }
+    });
+    if (!actionYmlFound) {
+        throw new Error(`No action.yml or action.yaml file found in source repository`);
     }
-    return targetDir;
 }
-exports.bundleFilesintoDirectory = bundleFilesintoDirectory;
+exports.stageActionFiles = stageActionFiles;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath) {
     const stats = fs.statSync(filePath);

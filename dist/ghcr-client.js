@@ -32,7 +32,7 @@ const axios_1 = __importDefault(require("axios"));
 const fsHelper = __importStar(require("./fs-helper"));
 const axios_debug_log_1 = __importDefault(require("axios-debug-log"));
 // Publish the OCI artifact and return the URL where it can be downloaded
-async function publishOCIArtifact(token, registry, repository, releaseId, semver, zipFile, tarFile, manifest, debugRequests = false) {
+async function publishOCIArtifact(token, registry, repository, semver, zipFile, tarFile, manifest, debugRequests = false) {
     if (debugRequests) {
         configureRequestDebugLogging();
     }
@@ -54,8 +54,8 @@ async function publishOCIArtifact(token, registry, repository, releaseId, semver
         }
     });
     await Promise.all(layerUploads);
-    await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token);
-    return new URL(`${repository}:${semver}`, registry);
+    const digest = await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token);
+    return { packageURL: new URL(`${repository}:${semver}`, registry), manifestDigest: digest };
 }
 exports.publishOCIArtifact = publishOCIArtifact;
 async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBlobEndpoint, b64Token) {
@@ -117,6 +117,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
     }
 }
+// Uploads the manifest and returns the digest returned by GHCR
 async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     core.info(`Uploading manifest to ${manifestEndpoint}.`);
     const putResponse = await axios_1.default.put(manifestEndpoint, manifestJSON, {
@@ -131,6 +132,11 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
     }
+    const digestResponseHeader = putResponse.headers['Docker-Content-Digest'];
+    if (digestResponseHeader === undefined) {
+        throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
+    }
+    return digestResponseHeader;
 }
 function configureRequestDebugLogging() {
     (0, axios_debug_log_1.default)({
