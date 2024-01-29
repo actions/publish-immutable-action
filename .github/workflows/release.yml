@@ -2,6 +2,10 @@ name: 'release'
 on: # rebuild any PRs and main branch changes
   release:
     types: [created]
+permissions:
+  id-token: write
+  contents: write
+  packages: write
 jobs:
   package-and-publish: 
     runs-on: ubuntu-latest
