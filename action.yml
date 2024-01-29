@@ -7,25 +7,42 @@ branding:
   color: 'red'
 
 inputs:
-  token:
-    required: true
-    description: >
-      GITHUB_TOKEN having the write:package scope to publish an action package to GHCR.
-    default: ${{ github.token }}
   path:
     required: false
     description: The work directory or path to be tar archived and uploaded as OCI Artifact layer.
     default: '.'
-  registry:
-    required: false
-    description: The registry to publish the action package to.
-    default: https://ghcr.io/ # TODO: this should perhaps be fetched from GitHub API.
 
 outputs:
   package-url:
     description: 'The name of package published to GHCR along with semver. For example, https://ghcr.io/actions/package-action:1.0.1'
+    value: ${{steps.publish.outputs.package-url}}
   package-manifest:
     description: 'The package manifest of the published package in JSON format'
+    value: ${{steps.publish.outputs.package-manifest}}
+  package-manifest-sha:
+    description: 'A sha256 hash of the package manifest'
+    value: ${{steps.publish.outputs.package-manifest-sha}}
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: 'composite'
+  steps:
+    - name: Publish Action Package
+      run: 'node ${{github.action_path}}/dist/index.js --path ${{ inputs.path }}'
+      shell: bash
+      id: publish
+      env:
+        TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+    - name: Output variables
+      shell: bash
+      run: |
+        echo "package manifest": ${{steps.publish.outputs.package-manifest}}
+        echo "package manifest sha": ${{steps.publish.outputs.package-manifest-sha}}
+        echo "package url": ${{steps.publish.outputs.package-url}}
+        echo "subject name": ${{github.repository}}_${{github.ref}}
+    # - name: Generate Provenance Attestation
+    #  uses: github-early-access/generate-build-provenance@main
+    #  id: build-provenance
+    #  with:
+    #    subject-name: ${{github.repository}}_${{github.ref}}
+    #    subject-digest: ${{steps.publish.outputs.package-manifest-sha}}
+    #    push-to-registry: false

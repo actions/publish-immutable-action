@@ -74,12 +74,14 @@
     "axios": "^1.6.2",
     "axios-debug-log": "^1.0.0",
     "fs-extra": "^11.1.1",
+    "minimist": "^1.2.8",
     "tar": "^6.2.0"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.2",
     "@types/axios": "^0.14.0",
     "@types/jest": "^29.5.11",
+    "@types/minimist": "^1.2.5",
     "@types/node": "^20.11.4",
     "@types/tar": "^6.1.10",
     "@typescript-eslint/eslint-plugin": "^6.12.0",

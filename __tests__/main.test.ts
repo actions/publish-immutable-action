@@ -20,10 +20,10 @@ let setOutputMock: jest.SpyInstance
 
 // Mock the filesystem helper
 let createTempDirMock: jest.SpyInstance
-let isDirectoryMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let removeDirMock: jest.SpyInstance
-let bundleFilesintoDirectoryMock: jest.SpyInstance
+let getConsolidatedDirectoryMock: jest.SpyInstance
+let isActionRepoMock: jest.SpyInstance
 
 // Mock the GHCR Client
 let publishOCIArtifactMock: jest.SpyInstance
@@ -41,14 +41,14 @@ describe('action', () => {
     createTempDirMock = jest
       .spyOn(fsHelper, 'createTempDir')
       .mockImplementation()
-    isDirectoryMock = jest.spyOn(fsHelper, 'isDirectory').mockImplementation()
     createArchivesMock = jest
       .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
     removeDirMock = jest.spyOn(fsHelper, 'removeDir').mockImplementation()
-    bundleFilesintoDirectoryMock = jest
-      .spyOn(fsHelper, 'bundleFilesintoDirectory')
+    getConsolidatedDirectoryMock = jest
+      .spyOn(fsHelper, 'getConsolidatedDirectory')
       .mockImplementation()
+    isActionRepoMock = jest.spyOn(fsHelper, 'isActionRepo').mockImplementation()
 
     // GHCR Client mocks
     publishOCIArtifactMock = jest
@@ -61,7 +61,7 @@ describe('action', () => {
     process.env.GITHUB_REPOSITORY = ''
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
@@ -69,11 +69,11 @@ describe('action', () => {
 
   it('fails if event is not a release', async () => {
     // Mock the environment
-    process.env.GITHUB_REPOSITORY = 'test/test'
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'push'
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe('action', () => {
 
   it('fails if release tag is not a valid semantic version', async () => {
     // Mock the environment
-    process.env.GITHUB_REPOSITORY = 'test/test'
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     github.context.payload = {
       release: {
@@ -93,7 +93,7 @@ describe('action', () => {
     }
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith(
@@ -103,12 +103,12 @@ describe('action', () => {
 
   it('fails if multiple paths are provided and staging files fails', async () => {
     // Mock the environment
-    process.env.GITHUB_REPOSITORY = 'test/test'
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     github.context.payload = {
       release: {
         id: '123',
-        tag_name: 'v1.0.0'
+        tag_name: 'v1.2.3'
       }
     }
     getInputMock.mockImplementation((name: string) => {
@@ -120,14 +120,12 @@ describe('action', () => {
       return ''
     })
 
-    isDirectoryMock.mockImplementation(() => true)
-
-    bundleFilesintoDirectoryMock.mockImplementation(() => {
+    getConsolidatedDirectoryMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
     // Run the action
-    await main.run()
+    await main.run('directory1 directory2')
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -135,12 +133,12 @@ describe('action', () => {
 
   it('fails if an error is thrown from dependent code', async () => {
     // Mock the environment
-    process.env.GITHUB_REPOSITORY = 'test/test'
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     github.context.payload = {
       release: {
         id: '123',
-        tag_name: 'v1.0.0'
+        tag_name: 'v1.2.3'
       }
     }
     getInputMock.mockImplementation((name: string) => {
@@ -152,7 +150,10 @@ describe('action', () => {
       return ''
     })
 
-    isDirectoryMock.mockImplementation(() => true)
+    getConsolidatedDirectoryMock.mockImplementation(() => {
+      return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false }
+    })
+    isActionRepoMock.mockImplementation(() => true)
 
     createTempDirMock.mockImplementation(() => '/tmp/test')
 
@@ -161,10 +162,10 @@ describe('action', () => {
     })
 
     // Run the action
-    await main.run()
+    await main.run('directory')
 
     // Check the results
-    expect(isDirectoryMock).toHaveBeenCalledWith('directory')
+    expect(getConsolidatedDirectoryMock).toHaveBeenCalledTimes(1)
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
 
     // Expect the files to be cleaned up
@@ -172,22 +173,22 @@ describe('action', () => {
   })
 
   it('successfully uploads if the release tag is a semver without v prefix', async () => {
-    await testHappyPath('1.0.0', 'test')
+    await testHappyPath('1.2.3', 'test')
   })
 
   it('successfully uploads if the release tag is a semver with v prefix', async () => {
-    await testHappyPath('v1.0.0', 'test')
+    await testHappyPath('v1.2.3', 'test')
   })
 
   it('successfully uploads if multiple paths are provided', async () => {
-    await testHappyPath('v1.0.0', 'test test2')
+    await testHappyPath('v1.2.3', 'test test2')
   })
 })
 
 // Test that main successfully uploads and returns the manifest & package URL
 async function testHappyPath(version: string, path: string): Promise<void> {
   // Mock the environment
-  process.env.GITHUB_REPOSITORY = 'test/test'
+  process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
   github.context.eventName = 'release'
   github.context.payload = {
     release: {
@@ -204,10 +205,10 @@ async function testHappyPath(version: string, path: string): Promise<void> {
     return ''
   })
 
-  isDirectoryMock.mockImplementation(() => true)
+  isActionRepoMock.mockImplementation(() => true)
 
-  bundleFilesintoDirectoryMock.mockImplementation(() => {
-    return '/tmp/test'
+  getConsolidatedDirectoryMock.mockImplementation(() => {
+    return { consolidatedDirectory: '/tmp/test', needToCleanUpDir: false } // TODO: I don't understand why I have to name the variables here but not in the implementation code
   })
 
   createTempDirMock.mockImplementation(() => '/tmp/test')
@@ -228,18 +229,18 @@ async function testHappyPath(version: string, path: string): Promise<void> {
   })
 
   publishOCIArtifactMock.mockImplementation(() => {
-    return new URL('https://ghcr.io/v2/test/test:1.0.0')
+    return new URL('https://ghcr.io/v2/test-org/test-repo:1.2.3')
   })
 
   // Run the action
-  await main.run()
+  await main.run(path)
 
   expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
 
   // Check manifest is in output
   expect(setOutputMock).toHaveBeenCalledWith(
     'package-url',
-    'https://ghcr.io/v2/test/test:1.0.0'
+    'https://ghcr.io/v2/test-org/test-repo:1.2.3'
   )
   expect(setOutputMock).toHaveBeenCalledWith(
     'package-manifest',

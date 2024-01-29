@@ -33739,6 +33739,277 @@ function populateMaps (extensions, types) {
 
 /***/ }),
 
+/***/ 35871:
+/***/ ((module) => {
+
+"use strict";
+
+
+function hasKey(obj, keys) {
+	var o = obj;
+	keys.slice(0, -1).forEach(function (key) {
+		o = o[key] || {};
+	});
+
+	var key = keys[keys.length - 1];
+	return key in o;
+}
+
+function isNumber(x) {
+	if (typeof x === 'number') { return true; }
+	if ((/^0x[0-9a-f]+$/i).test(x)) { return true; }
+	return (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(e[-+]?\d+)?$/).test(x);
+}
+
+function isConstructorOrProto(obj, key) {
+	return (key === 'constructor' && typeof obj[key] === 'function') || key === '__proto__';
+}
+
+module.exports = function (args, opts) {
+	if (!opts) { opts = {}; }
+
+	var flags = {
+		bools: {},
+		strings: {},
+		unknownFn: null,
+	};
+
+	if (typeof opts.unknown === 'function') {
+		flags.unknownFn = opts.unknown;
+	}
+
+	if (typeof opts.boolean === 'boolean' && opts.boolean) {
+		flags.allBools = true;
+	} else {
+		[].concat(opts.boolean).filter(Boolean).forEach(function (key) {
+			flags.bools[key] = true;
+		});
+	}
+
+	var aliases = {};
+
+	function aliasIsBoolean(key) {
+		return aliases[key].some(function (x) {
+			return flags.bools[x];
+		});
+	}
+
+	Object.keys(opts.alias || {}).forEach(function (key) {
+		aliases[key] = [].concat(opts.alias[key]);
+		aliases[key].forEach(function (x) {
+			aliases[x] = [key].concat(aliases[key].filter(function (y) {
+				return x !== y;
+			}));
+		});
+	});
+
+	[].concat(opts.string).filter(Boolean).forEach(function (key) {
+		flags.strings[key] = true;
+		if (aliases[key]) {
+			[].concat(aliases[key]).forEach(function (k) {
+				flags.strings[k] = true;
+			});
+		}
+	});
+
+	var defaults = opts.default || {};
+
+	var argv = { _: [] };
+
+	function argDefined(key, arg) {
+		return (flags.allBools && (/^--[^=]+$/).test(arg))
+			|| flags.strings[key]
+			|| flags.bools[key]
+			|| aliases[key];
+	}
+
+	function setKey(obj, keys, value) {
+		var o = obj;
+		for (var i = 0; i < keys.length - 1; i++) {
+			var key = keys[i];
+			if (isConstructorOrProto(o, key)) { return; }
+			if (o[key] === undefined) { o[key] = {}; }
+			if (
+				o[key] === Object.prototype
+				|| o[key] === Number.prototype
+				|| o[key] === String.prototype
+			) {
+				o[key] = {};
+			}
+			if (o[key] === Array.prototype) { o[key] = []; }
+			o = o[key];
+		}
+
+		var lastKey = keys[keys.length - 1];
+		if (isConstructorOrProto(o, lastKey)) { return; }
+		if (
+			o === Object.prototype
+			|| o === Number.prototype
+			|| o === String.prototype
+		) {
+			o = {};
+		}
+		if (o === Array.prototype) { o = []; }
+		if (o[lastKey] === undefined || flags.bools[lastKey] || typeof o[lastKey] === 'boolean') {
+			o[lastKey] = value;
+		} else if (Array.isArray(o[lastKey])) {
+			o[lastKey].push(value);
+		} else {
+			o[lastKey] = [o[lastKey], value];
+		}
+	}
+
+	function setArg(key, val, arg) {
+		if (arg && flags.unknownFn && !argDefined(key, arg)) {
+			if (flags.unknownFn(arg) === false) { return; }
+		}
+
+		var value = !flags.strings[key] && isNumber(val)
+			? Number(val)
+			: val;
+		setKey(argv, key.split('.'), value);
+
+		(aliases[key] || []).forEach(function (x) {
+			setKey(argv, x.split('.'), value);
+		});
+	}
+
+	Object.keys(flags.bools).forEach(function (key) {
+		setArg(key, defaults[key] === undefined ? false : defaults[key]);
+	});
+
+	var notFlags = [];
+
+	if (args.indexOf('--') !== -1) {
+		notFlags = args.slice(args.indexOf('--') + 1);
+		args = args.slice(0, args.indexOf('--'));
+	}
+
+	for (var i = 0; i < args.length; i++) {
+		var arg = args[i];
+		var key;
+		var next;
+
+		if ((/^--.+=/).test(arg)) {
+			// Using [\s\S] instead of . because js doesn't support the
+			// 'dotall' regex modifier. See:
+			// http://stackoverflow.com/a/1068308/13216
+			var m = arg.match(/^--([^=]+)=([\s\S]*)$/);
+			key = m[1];
+			var value = m[2];
+			if (flags.bools[key]) {
+				value = value !== 'false';
+			}
+			setArg(key, value, arg);
+		} else if ((/^--no-.+/).test(arg)) {
+			key = arg.match(/^--no-(.+)/)[1];
+			setArg(key, false, arg);
+		} else if ((/^--.+/).test(arg)) {
+			key = arg.match(/^--(.+)/)[1];
+			next = args[i + 1];
+			if (
+				next !== undefined
+				&& !(/^(-|--)[^-]/).test(next)
+				&& !flags.bools[key]
+				&& !flags.allBools
+				&& (aliases[key] ? !aliasIsBoolean(key) : true)
+			) {
+				setArg(key, next, arg);
+				i += 1;
+			} else if ((/^(true|false)$/).test(next)) {
+				setArg(key, next === 'true', arg);
+				i += 1;
+			} else {
+				setArg(key, flags.strings[key] ? '' : true, arg);
+			}
+		} else if ((/^-[^-]+/).test(arg)) {
+			var letters = arg.slice(1, -1).split('');
+
+			var broken = false;
+			for (var j = 0; j < letters.length; j++) {
+				next = arg.slice(j + 2);
+
+				if (next === '-') {
+					setArg(letters[j], next, arg);
+					continue;
+				}
+
+				if ((/[A-Za-z]/).test(letters[j]) && next[0] === '=') {
+					setArg(letters[j], next.slice(1), arg);
+					broken = true;
+					break;
+				}
+
+				if (
+					(/[A-Za-z]/).test(letters[j])
+					&& (/-?\d+(\.\d*)?(e-?\d+)?$/).test(next)
+				) {
+					setArg(letters[j], next, arg);
+					broken = true;
+					break;
+				}
+
+				if (letters[j + 1] && letters[j + 1].match(/\W/)) {
+					setArg(letters[j], arg.slice(j + 2), arg);
+					broken = true;
+					break;
+				} else {
+					setArg(letters[j], flags.strings[letters[j]] ? '' : true, arg);
+				}
+			}
+
+			key = arg.slice(-1)[0];
+			if (!broken && key !== '-') {
+				if (
+					args[i + 1]
+					&& !(/^(-|--)[^-]/).test(args[i + 1])
+					&& !flags.bools[key]
+					&& (aliases[key] ? !aliasIsBoolean(key) : true)
+				) {
+					setArg(key, args[i + 1], arg);
+					i += 1;
+				} else if (args[i + 1] && (/^(true|false)$/).test(args[i + 1])) {
+					setArg(key, args[i + 1] === 'true', arg);
+					i += 1;
+				} else {
+					setArg(key, flags.strings[key] ? '' : true, arg);
+				}
+			}
+		} else {
+			if (!flags.unknownFn || flags.unknownFn(arg) !== false) {
+				argv._.push(flags.strings._ || !isNumber(arg) ? arg : Number(arg));
+			}
+			if (opts.stopEarly) {
+				argv._.push.apply(argv._, args.slice(i + 1));
+				break;
+			}
+		}
+	}
+
+	Object.keys(defaults).forEach(function (k) {
+		if (!hasKey(argv, k.split('.'))) {
+			setKey(argv, k.split('.'), defaults[k]);
+
+			(aliases[k] || []).forEach(function (x) {
+				setKey(argv, x.split('.'), defaults[k]);
+			});
+		}
+	});
+
+	if (opts['--']) {
+		argv['--'] = notFlags.slice();
+	} else {
+		notFlags.forEach(function (k) {
+			argv._.push(k);
+		});
+	}
+
+	return argv;
+};
+
+
+/***/ }),
+
 /***/ 41077:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -74422,7 +74693,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.bundleFilesintoDirectory = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
+exports.readFileContents = exports.isActionRepo = exports.isDirectory = exports.createArchives = exports.getConsolidatedDirectory = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
@@ -74445,6 +74716,24 @@ function removeDir(dir) {
     }
 }
 exports.removeDir = removeDir;
+// TODO: rename this function, it is not state-preserving, so it shouldn't just be called "get'"
+function getConsolidatedDirectory(filePathSpec) {
+    const paths = filePathSpec.split(' '); // TODO: handle files with spaces
+    // TODO: do check on paths to make sure they're valid and not reaching outside the space
+    let consolidatedPath = '';
+    let needToCleanUpDir = false;
+    if (paths.length === 1 && isDirectory(paths[0])) {
+        // If the path is a single directory, we can skip the bundling step
+        consolidatedPath = paths[0];
+    }
+    else {
+        // Otherwise, we need to bundle the files & folders into a temporary directory
+        consolidatedPath = bundleFilesintoDirectory(paths);
+        needToCleanUpDir = true;
+    }
+    return { consolidatedPath, needToCleanUpDir };
+}
+exports.getConsolidatedDirectory = getConsolidatedDirectory;
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
 async function createArchives(distPath, archiveTargetPath = createTempDir()) {
@@ -74463,7 +74752,7 @@ async function createArchives(distPath, archiveTargetPath = createTempDir()) {
             resolve(fileMetadata(zipPath));
         });
         archive.pipe(output);
-        archive.directory(distPath, false);
+        archive.directory(distPath, false); // TODO: make sure this doesn't include dirs that start with ., same with below
         archive.finalize();
     });
     const createTarPromise = new Promise((resolve, reject) => {
@@ -74493,27 +74782,32 @@ function isDirectory(dirPath) {
     return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory();
 }
 exports.isDirectory = isDirectory;
+function isActionRepo(stagingDir) {
+    return (fs.existsSync(path.join(stagingDir, 'action.yml')) ||
+        fs.existsSync(path.join(stagingDir, 'action.yaml')));
+}
+exports.isActionRepo = isActionRepo;
 function readFileContents(filePath) {
     return fs.readFileSync(filePath);
 }
 exports.readFileContents = readFileContents;
-function bundleFilesintoDirectory(files, targetDir = createTempDir()) {
-    for (const file of files) {
-        if (!fs.existsSync(file)) {
-            throw new Error(`File ${file} does not exist`);
+function bundleFilesintoDirectory(filePaths) {
+    const targetDir = createTempDir();
+    for (const filePath of filePaths) {
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`filePath ${filePath} does not exist`);
         }
-        if (isDirectory(file)) {
-            const targetFolder = path.join(targetDir, path.basename(file));
-            fs_extra_1.default.copySync(file, targetFolder);
+        if (isDirectory(filePath)) {
+            const targetFolder = path.join(targetDir, path.basename(filePath)); // TODO: basename is probably not what we actually want here. Or is it? Maybe conflicts between dir1/dir2 and dir1/dir3/dir2 are just user error or ??
+            fs_extra_1.default.copySync(filePath, targetFolder); // TODO: ignore files preceded by .
         }
         else {
-            const targetFile = path.join(targetDir, path.basename(file));
-            fs.copyFileSync(file, targetFile);
+            const targetFile = path.join(targetDir, path.basename(filePath));
+            fs.copyFileSync(filePath, targetFile);
         }
     }
     return targetDir;
 }
-exports.bundleFilesintoDirectory = bundleFilesintoDirectory;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath) {
     const stats = fs.statSync(filePath);
@@ -74696,6 +74990,27 @@ function configureRequestDebugLogging() {
 
 /***/ }),
 
+/***/ 6144:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+/**
+ * The entrypoint for the action.
+ */
+const main_1 = __nccwpck_require__(70399);
+const minimist_1 = __importDefault(__nccwpck_require__(35871));
+const path = (0, minimist_1.default)(process.argv.slice(2)).path || '.';
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+(0, main_1.run)(path);
+
+
+/***/ }),
+
 /***/ 70399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -74735,11 +75050,12 @@ const fsHelper = __importStar(__nccwpck_require__(76642));
 const ociContainer = __importStar(__nccwpck_require__(33207));
 const ghcr = __importStar(__nccwpck_require__(62894));
 const semver_1 = __importDefault(__nccwpck_require__(11383));
+const crypto_1 = __importDefault(__nccwpck_require__(6113));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
-async function run() {
+async function run(pathInput) {
     const tmpDirs = [];
     try {
         // Parse and validate Actions execution context, including the repository name, release name and event type
@@ -74758,37 +75074,39 @@ async function run() {
         // https://docs.github.com/en/actions/creating-actions/releasing-and-maintaining-actions
         const targetVersion = semver_1.default.parse(releaseTag.replace(/^v/, ''));
         if (!targetVersion) {
-            // TODO: We may want to limit semvers to only x.x.x, without the pre-release tags, but for now we'll allow them.
             core.setFailed(`${releaseTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`);
             return;
         }
-        // Gather & validate user inputs
-        const token = core.getInput('token');
-        const registryURL = new URL(core.getInput('registry')); // TODO: Should this be dynamic? Maybe an API endpoint to grab the registry for GHES/proxima purposes.
-        // Paths to be included in the OCI image
-        const paths = core.getInput('path').split(' ');
-        let path = '';
-        if (paths.length === 1 && fsHelper.isDirectory(paths[0])) {
-            // If the path is a single directory, we can skip the bundling step
-            path = paths[0];
+        const token = process.env.TOKEN;
+        const { consolidatedPath, needToCleanUpDir } = fsHelper.getConsolidatedDirectory(pathInput);
+        if (needToCleanUpDir) {
+            tmpDirs.push(consolidatedPath);
         }
-        else {
-            // Otherwise, we need to bundle the files & folders into a temporary directory
-            const bundleDir = fsHelper.createTempDir();
-            tmpDirs.push(bundleDir);
-            path = fsHelper.bundleFilesintoDirectory(paths, bundleDir);
+        if (!fsHelper.isActionRepo(consolidatedPath)) {
+            core.setFailed('action.y(a)ml not found. Action packages can be created only for action repositories.');
+            return;
         }
         // Create a temporary directory to store the archives
         const archiveDir = fsHelper.createTempDir();
         tmpDirs.push(archiveDir);
-        const archives = await fsHelper.createArchives(path, archiveDir);
+        const archives = await fsHelper.createArchives(consolidatedPath, archiveDir);
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, targetVersion.raw, new Date());
+        // Generate SHA-256 hash of the manifest
+        const manifestSHA = crypto_1.default.createHash('sha256');
+        const manifestHash = manifestSHA
+            .update(JSON.stringify(manifest))
+            .digest('hex');
+        const response = await fetch(`${process.env.GITHUB_API_URL}/packages/container-registry-url`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch status page: ${response.statusText}`);
+        }
+        const data = await response.json();
+        const registryURL = new URL(data.url);
+        console.log(`Container registry URL: ${registryURL}`);
         const packageURL = await ghcr.publishOCIArtifact(token, registryURL, repository, releaseId.toString(), targetVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
         core.setOutput('package-url', packageURL.toString());
-        // TODO: We might need to do some attestation stuff here, but unsure how to integrate it yet.
-        // We might need to return the manifest JSON from the Action and link it to another action,
-        // or we might be able to make an API call here. It's unclear at this point.
         core.setOutput('package-manifest', JSON.stringify(manifest));
+        core.setOutput('package-manifest-sha', `sha256:${manifestHash}`);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -79522,22 +79840,12 @@ module.exports = JSON.parse('{"application/1d-interleaved-parityfec":{"source":"
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be in strict mode.
-(() => {
-"use strict";
-var exports = __webpack_exports__;
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-/**
- * The entrypoint for the action.
- */
-const main_1 = __nccwpck_require__(70399);
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-(0, main_1.run)();
-
-})();
-
-module.exports = __webpack_exports__;
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __nccwpck_require__(6144);
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
 /******/ })()
 ;
