@@ -6,8 +6,13 @@ export async function getRepositoryMetadata(
   token: string
 ): Promise<{ repoId: string; ownerId: string }> {
   const response = await fetch(
-    `${process.env.GITHUB_API_URL}/repos/${repository}`
-  )
+    `${process.env.GITHUB_API_URL}/repos/${repository}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    })
 
   if (!response.ok) {
     throw new Error(
