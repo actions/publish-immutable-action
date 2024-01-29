@@ -21,6 +21,9 @@ export function createActionPackageManifest(
   tarFile: FileMetadata,
   zipFile: FileMetadata,
   repository: string,
+  repoId: string,
+  ownerId: string,
+  sourceCommit: string,
   version: string,
   created: Date
 ): Manifest {
@@ -32,14 +35,18 @@ export function createActionPackageManifest(
   const manifest: Manifest = {
     schemaVersion: 2,
     mediaType: 'application/vnd.oci.image.manifest.v1+json',
-    artifactType: 'application/vnd.oci.image.manifest.v1+json',
+    artifactType: 'application/vnd.github.actions.package.v1+json',
     config: configLayer,
     layers: [configLayer, tarLayer, zipLayer],
     annotations: {
       'org.opencontainers.image.created': created.toISOString(),
       'action.tar.gz.digest': tarFile.sha256,
       'action.zip.digest': zipFile.sha256,
-      'com.github.package.type': 'actions_oci_pkg'
+      'com.github.package.type': 'actions_oci_pkg',
+      'com.github.package.version': version,
+      'com.github.source.repo.id': repoId,
+      'com.github.source.repo.owner.id': ownerId,
+      'com.github.source.commit': sourceCommit,
     }
   }
 
