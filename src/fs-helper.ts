@@ -101,12 +101,12 @@ export function readFileContents(filePath: string): Buffer {
 export function stageActionFiles(actionDir: string, targetDir: string) {
   var actionYmlFound = false
 
-  core.log(`Staging action files from ${actionDir} to ${targetDir}`)
+  core.info(`Staging action files from ${actionDir} to ${targetDir}`)
 
   fsExtra.copySync(actionDir, targetDir, {
     filter: (src: string, dest: string) => {
       const basename = path.basename(src)
-      core.log(`Copying ${src} to ${dest}, basename: ${basename}`)
+      core.info(`Copying ${src} to ${dest}, basename: ${basename}`)
 
       if (basename === 'action.yml' || basename === 'action.yaml') {
         actionYmlFound = true
