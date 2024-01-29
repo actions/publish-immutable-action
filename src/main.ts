@@ -78,7 +78,7 @@ export async function run(pathInput: string): Promise<void> {
 
     core.setOutput('package-url', packageURL.toString())
     core.setOutput('package-manifest', JSON.stringify(manifest))
-    core.setOutput('package-manifest-sha', `sha256:${manifestDigest}`)
+    core.setOutput('package-manifest-sha', manifestDigest)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
