@@ -119,7 +119,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': "1234567678" }
+          headers: { 'Docker-Content-Digest': '1234567678' }
         }
       }
 
@@ -175,7 +175,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': "1234567678" }
+          headers: { 'Docker-Content-Digest': '1234567678' }
         }
       }
 
@@ -244,7 +244,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': "1234567678" }
+          headers: { 'Docker-Content-Digest': '1234567678' }
         }
       }
 

@@ -32,6 +32,8 @@ runs:
       env:
         TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_SHA: ${{ github.sha }}
     - name: Output variables
       shell: bash
       run: |

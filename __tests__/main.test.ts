@@ -81,24 +81,27 @@ describe('run', () => {
 
   it('fails if no token found', async () => {
     // Mock the environment
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.TOKEN = ''
 
     // Run the action
     await main.run('directory1 directory2')
 
     // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
+    expect(setFailedMock).toHaveBeenCalledWith('Could not find GITHUB_TOKEN.')
   })
 
   it('fails if no source commit found', async () => {
     // Mock the environment
+    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
+    process.env.TOKEN = 'test'
     process.env.GITHUB_SHA = ''
 
     // Run the action
     await main.run('')
 
     // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
+    expect(setFailedMock).toHaveBeenCalledWith('Could not find source commit.')
   })
 
   it('fails if trigger is not release or tag push', async () => {
@@ -122,7 +125,7 @@ describe('run', () => {
     process.env.GITHUB_SHA = 'test-sha'
     process.env.TOKEN = 'token'
     github.context.eventName = 'push'
-    github.context.ref = "refs/heads/main" // This is a branch, not a tag
+    github.context.ref = 'refs/heads/main' // This is a branch, not a tag
 
     await main.run('')
 
@@ -352,7 +355,10 @@ describe('run', () => {
     })
 
     publishOCIArtifactMock.mockImplementation(() => {
-      return { packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3', manifestDigest: 'my-test-digest' }
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        manifestDigest: 'my-test-digest'
+      }
     })
 
     // Run the action
@@ -366,7 +372,7 @@ describe('run', () => {
 
     expect(setOutputMock).toHaveBeenCalledWith(
       'package-url',
-      'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
     )
 
     expect(setOutputMock).toHaveBeenCalledWith(

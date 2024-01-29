@@ -23,7 +23,7 @@ export async function run(pathInput: string): Promise<void> {
     const token: string = process.env.TOKEN || ''
     const sourceCommit: string = process.env.GITHUB_SHA || ''
     if (token === '') {
-      core.setFailed(`Could not find source commit.`)
+      core.setFailed(`Could not find GITHUB_TOKEN.`)
       return
     }
     if (sourceCommit === '') {
@@ -36,14 +36,20 @@ export async function run(pathInput: string): Promise<void> {
     // Create a temporary directory to stage files for packaging in archives
     const stagedActionFilesDir = fsHelper.createTempDir()
     tmpDirs.push(stagedActionFilesDir)
-    fsHelper.stageActionFiles(".", stagedActionFilesDir)
+    fsHelper.stageActionFiles('.', stagedActionFilesDir)
 
     // Create a temporary directory to store the archives
     const archiveDir = fsHelper.createTempDir()
     tmpDirs.push(archiveDir)
-    const archives = await fsHelper.createArchives(stagedActionFilesDir, archiveDir)
+    const archives = await fsHelper.createArchives(
+      stagedActionFilesDir,
+      archiveDir
+    )
 
-    const {repoId, ownerId} = await api.getRepositoryMetadata(repository, token)
+    const { repoId, ownerId } = await api.getRepositoryMetadata(
+      repository,
+      token
+    )
 
     const manifest = ociContainer.createActionPackageManifest(
       archives.tarFile,
@@ -93,8 +99,7 @@ function parseSourceSemanticVersion(): semver.SemVer {
   var semverTag = ''
 
   // Grab the raw tag
-  if (event === 'release')
-    semverTag = github.context.payload.release.tag_name
+  if (event === 'release') semverTag = github.context.payload.release.tag_name
   else if (event === 'push' && github.context.ref.startsWith('refs/tags/')) {
     semverTag = github.context.ref.replace(/^refs\/tags\//, '')
   } else {
@@ -111,7 +116,9 @@ function parseSourceSemanticVersion(): semver.SemVer {
 
   const semanticVersion = semver.parse(semverTag.replace(/^v/, ''))
   if (!semanticVersion) {
-    throw new Error(`${semverTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`)
+    throw new Error(
+      `${semverTag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
+    )
   }
 
   return semanticVersion

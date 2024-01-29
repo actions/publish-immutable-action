@@ -76,7 +76,6 @@ describe('createActionPackageManifest', () => {
         path: 'test.tar.gz',
         size: tarFile.size,
         sha256: tarFile.sha256
-
       },
       {
         path: 'test.zip',

@@ -15,7 +15,7 @@ export async function publishOCIArtifact(
   tarFile: FileMetadata,
   manifest: ociContainer.Manifest,
   debugRequests = false
-): Promise<{packageURL: URL, manifestDigest: string}> {
+): Promise<{ packageURL: URL; manifestDigest: string }> {
   if (debugRequests) {
     configureRequestDebugLogging()
   }
@@ -75,9 +75,16 @@ export async function publishOCIArtifact(
 
   await Promise.all(layerUploads)
 
-  const digest = await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token)
+  const digest = await uploadManifest(
+    JSON.stringify(manifest),
+    manifestEndpoint,
+    b64Token
+  )
 
-  return { packageURL: new URL(`${repository}:${semver}`, registry), manifestDigest: digest }
+  return {
+    packageURL: new URL(`${repository}:${semver}`, registry),
+    manifestDigest: digest
+  }
 }
 
 async function uploadLayer(

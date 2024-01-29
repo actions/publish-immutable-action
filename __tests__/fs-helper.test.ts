@@ -7,7 +7,6 @@ import { execSync } from 'child_process'
 const fileContent = 'This is the content of the file'
 
 describe('stageActionFiles', () => {
-
   let sourceDir: string
   let stagingDir: string
 
@@ -26,7 +25,9 @@ describe('stageActionFiles', () => {
   })
 
   it('returns an error if no action.yml file is present', () => {
-    expect(() => fsHelper.stageActionFiles(sourceDir, stagingDir)).toThrow(/^No action.yml or action.yaml file found in source repository/)
+    expect(() => fsHelper.stageActionFiles(sourceDir, stagingDir)).toThrow(
+      /^No action.yml or action.yaml file found in source repository/
+    )
   })
 
   it('copies all non-hidden files to the staging directory', () => {
