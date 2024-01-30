@@ -12,7 +12,6 @@ let axiosHeadMock: jest.SpyInstance
 const token = 'test-token'
 const registry = new URL('https://ghcr.io')
 const repository = 'test-org/test-repo'
-const releaseId = 'test-release-id'
 const semver = '1.2.3'
 const genericSha = '1234567890' // We should look at using different shas here to catch bug, but that make location validation harder
 const zipFile: fsHelper.FileMetadata = {
@@ -119,7 +118,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': '1234567678' }
+          headers: { 'docker-content-digest': '1234567678' }
         }
       }
 
@@ -175,7 +174,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': '1234567678' }
+          headers: { 'docker-content-digest': '1234567678' }
         }
       }
 
@@ -244,7 +243,7 @@ describe('publishOCIArtifact', () => {
       if ((url as string).includes('manifest')) {
         return {
           status: 201,
-          headers: { 'Docker-Content-Digest': '1234567678' }
+          headers: { 'docker-content-digest': '1234567678' }
         }
       }
 

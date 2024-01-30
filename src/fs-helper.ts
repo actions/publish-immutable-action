@@ -97,11 +97,11 @@ export function readFileContents(filePath: string): Buffer {
 
 // Copy actions files from sourceDir to targetDir, excluding files and folders not relevant to the action
 // Errors if the repo appears to not contain any action files, such as an action.yml file
-export function stageActionFiles(actionDir: string, targetDir: string) {
-  var actionYmlFound = false
+export function stageActionFiles(actionDir: string, targetDir: string): void {
+  let actionYmlFound = false
 
   fsExtra.copySync(actionDir, targetDir, {
-    filter: (src: string, dest: string) => {
+    filter: (src: string) => {
       const basename = path.basename(src)
 
       if (basename === 'action.yml' || basename === 'action.yaml') {

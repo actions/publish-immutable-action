@@ -15,7 +15,6 @@ import * as ghcr from '../src/ghcr-client'
 import * as api from '../src/api-client'
 
 // Mock the GitHub Actions core library
-let getInputMock: jest.SpyInstance
 let setFailedMock: jest.SpyInstance
 let setOutputMock: jest.SpyInstance
 
@@ -37,7 +36,6 @@ describe('run', () => {
     jest.clearAllMocks()
 
     // Core mocks
-    getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
     setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
     setOutputMock = jest.spyOn(core, 'setOutput').mockImplementation()
 
@@ -113,7 +111,7 @@ describe('run', () => {
     const invalidEvents = ['workflow_dispatch, pull_request, schedule']
     for (const event of invalidEvents) {
       github.context.eventName = event
-      await main.run('')
+      await main.run()
       expect(setFailedMock).toHaveBeenCalledWith(
         'This action can only be triggered by release events or tag push events.'
       )
@@ -357,7 +355,7 @@ describe('run', () => {
     publishOCIArtifactMock.mockImplementation(() => {
       return {
         packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
-        manifestDigest: 'my-test-digest'
+        manifestDigest: 'sha256:my-test-digest'
       }
     })
 
