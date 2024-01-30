@@ -1,21 +1,10 @@
 name: 'Package and Publish'
 description: 'Publish actions as OCI artifacts to GHCR'
 
-permissions:
-  id-token: write
-  contents: write
-  packages: write
-
 # TODO: Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: 'heart'
   color: 'red'
-
-inputs:
-  path:
-    required: false
-    description: The work directory or path to be tar archived and uploaded as OCI Artifact layer.
-    default: '.'
 
 outputs:
   package-url:
@@ -27,11 +16,12 @@ outputs:
   package-manifest-sha:
     description: 'A sha256 hash of the package manifest'
     value: ${{steps.publish.outputs.package-manifest-sha}}
+
 runs:
   using: 'composite'
   steps:
     - name: Publish Action Package
-      run: 'node ${{github.action_path}}/dist/index.js --path ${{ inputs.path }}'
+      run: 'node ${{github.action_path}}/dist/index.js'
       shell: bash
       id: publish
       env:

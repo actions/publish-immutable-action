@@ -73,7 +73,7 @@ describe('run', () => {
     process.env.GITHUB_REPOSITORY = ''
 
     // Run the action
-    await main.run('directory1 directory2')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
@@ -85,7 +85,7 @@ describe('run', () => {
     process.env.TOKEN = ''
 
     // Run the action
-    await main.run('directory1 directory2')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Could not find GITHUB_TOKEN.')
@@ -98,7 +98,7 @@ describe('run', () => {
     process.env.GITHUB_SHA = ''
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Could not find source commit.')
@@ -127,7 +127,7 @@ describe('run', () => {
     github.context.eventName = 'push'
     github.context.ref = 'refs/heads/main' // This is a branch, not a tag
 
-    await main.run('')
+    await main.run()
 
     expect(setFailedMock).toHaveBeenCalledWith(
       'This action can only be triggered by release events or tag push events.'
@@ -150,7 +150,7 @@ describe('run', () => {
         }
       }
 
-      await main.run('')
+      await main.run()
       expect(setFailedMock).toHaveBeenCalledWith(
         `${tag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
       )
@@ -175,7 +175,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -199,7 +199,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -223,7 +223,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -265,7 +265,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -311,7 +311,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
@@ -362,7 +362,7 @@ describe('run', () => {
     })
 
     // Run the action
-    await main.run('')
+    await main.run()
 
     // Check the results
     expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
