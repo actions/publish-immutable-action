@@ -95,7 +95,7 @@
     "js-yaml": "^4.1.0",
     "make-coverage-badge": "^1.2.0",
     "prettier": "^3.2.4",
-    "prettier-eslint": "^16.1.2",
+    "prettier-eslint": "^16.3.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
   }
