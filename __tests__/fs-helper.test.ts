@@ -1,6 +1,5 @@
 import * as fsHelper from '../src/fs-helper'
 import * as fs from 'fs'
-import * as path from 'path'
 import * as os from 'os'
 import { execSync } from 'child_process'
 
