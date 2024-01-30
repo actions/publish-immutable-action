@@ -126,11 +126,7 @@ async function uploadLayer(
     headers: {
       Authorization: `Bearer ${b64Token}`
     },
-<<<<<<< HEAD
     body: JSON.stringify(layer)
-=======
-    body: layer
->>>>>>> d7d13e1 (replace axios with fetch)
   })
 
   if (initiateUploadResponse.status !== 202) {
@@ -210,14 +206,11 @@ async function uploadManifest(
   return digestResponseHeader
 }
 
-<<<<<<< HEAD
+
 const fetchWithDebug = async (
   url: string,
   config: RequestInit = {}
 ): Promise<Response> => {
-=======
-const fetchWithDebug = async (url: string, config = {}) => {
->>>>>>> d7d13e1 (replace axios with fetch)
   if (showDebugLog) {
     core.debug(`Request with ${JSON.stringify(config)}`)
   }
@@ -226,11 +219,7 @@ const fetchWithDebug = async (url: string, config = {}) => {
     if (showDebugLog) {
       core.debug(`Response with ${JSON.stringify(response)}`)
     }
-<<<<<<< HEAD
     return response
-=======
-    return response.json()
->>>>>>> d7d13e1 (replace axios with fetch)
   } catch (error) {
     if (showDebugLog) {
       core.debug(`Error with ${error}`)
