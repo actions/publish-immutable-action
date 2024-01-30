@@ -11,12 +11,6 @@ branding:
   icon: 'heart'
   color: 'red'
 
-inputs:
-  path:
-    required: false
-    description: The work directory or path to be tar archived and uploaded as OCI Artifact layer.
-    default: '.'
-
 outputs:
   package-url:
     description: 'The name of package published to GHCR along with semver. For example, https://ghcr.io/actions/package-action:1.0.1'
@@ -27,11 +21,12 @@ outputs:
   package-manifest-sha:
     description: 'A sha256 hash of the package manifest'
     value: ${{steps.publish.outputs.package-manifest-sha}}
+
 runs:
   using: 'composite'
   steps:
     - name: Publish Action Package
-      run: 'node ${{github.action_path}}/dist/index.js --path ${{ inputs.path }}'
+      run: 'node ${{github.action_path}}/dist/index.js'
       shell: bash
       id: publish
       env:

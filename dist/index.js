@@ -30628,6 +30628,7 @@ module.exports = union;
 
 /***/ }),
 
+<<<<<<< HEAD
 /***/ 5871:
 /***/ ((module) => {
 
@@ -30895,11 +30896,228 @@ module.exports = function (args, opts) {
 
 	return argv;
 };
+=======
+/***/ 47426:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+/*!
+ * mime-db
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015-2022 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+/**
+ * Module exports.
+ */
+
+module.exports = __nccwpck_require__(53765)
+>>>>>>> 5fc6c86 (remove path input param)
 
 
 /***/ }),
 
+<<<<<<< HEAD
 /***/ 1077:
+=======
+/***/ 43583:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+/*!
+ * mime-types
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+
+
+/**
+ * Module dependencies.
+ * @private
+ */
+
+var db = __nccwpck_require__(47426)
+var extname = (__nccwpck_require__(71017).extname)
+
+/**
+ * Module variables.
+ * @private
+ */
+
+var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/
+var TEXT_TYPE_REGEXP = /^text\//i
+
+/**
+ * Module exports.
+ * @public
+ */
+
+exports.charset = charset
+exports.charsets = { lookup: charset }
+exports.contentType = contentType
+exports.extension = extension
+exports.extensions = Object.create(null)
+exports.lookup = lookup
+exports.types = Object.create(null)
+
+// Populate the extensions/types maps
+populateMaps(exports.extensions, exports.types)
+
+/**
+ * Get the default charset for a MIME type.
+ *
+ * @param {string} type
+ * @return {boolean|string}
+ */
+
+function charset (type) {
+  if (!type || typeof type !== 'string') {
+    return false
+  }
+
+  // TODO: use media-typer
+  var match = EXTRACT_TYPE_REGEXP.exec(type)
+  var mime = match && db[match[1].toLowerCase()]
+
+  if (mime && mime.charset) {
+    return mime.charset
+  }
+
+  // default text/* to utf-8
+  if (match && TEXT_TYPE_REGEXP.test(match[1])) {
+    return 'UTF-8'
+  }
+
+  return false
+}
+
+/**
+ * Create a full Content-Type header given a MIME type or extension.
+ *
+ * @param {string} str
+ * @return {boolean|string}
+ */
+
+function contentType (str) {
+  // TODO: should this even be in this module?
+  if (!str || typeof str !== 'string') {
+    return false
+  }
+
+  var mime = str.indexOf('/') === -1
+    ? exports.lookup(str)
+    : str
+
+  if (!mime) {
+    return false
+  }
+
+  // TODO: use content-type or other module
+  if (mime.indexOf('charset') === -1) {
+    var charset = exports.charset(mime)
+    if (charset) mime += '; charset=' + charset.toLowerCase()
+  }
+
+  return mime
+}
+
+/**
+ * Get the default extension for a MIME type.
+ *
+ * @param {string} type
+ * @return {boolean|string}
+ */
+
+function extension (type) {
+  if (!type || typeof type !== 'string') {
+    return false
+  }
+
+  // TODO: use media-typer
+  var match = EXTRACT_TYPE_REGEXP.exec(type)
+
+  // get extensions
+  var exts = match && exports.extensions[match[1].toLowerCase()]
+
+  if (!exts || !exts.length) {
+    return false
+  }
+
+  return exts[0]
+}
+
+/**
+ * Lookup the MIME type for a file path/extension.
+ *
+ * @param {string} path
+ * @return {boolean|string}
+ */
+
+function lookup (path) {
+  if (!path || typeof path !== 'string') {
+    return false
+  }
+
+  // get the extension ("ext" or ".ext" or full path)
+  var extension = extname('x.' + path)
+    .toLowerCase()
+    .substr(1)
+
+  if (!extension) {
+    return false
+  }
+
+  return exports.types[extension] || false
+}
+
+/**
+ * Populate the extensions and types maps.
+ * @private
+ */
+
+function populateMaps (extensions, types) {
+  // source preference (least -> most)
+  var preference = ['nginx', 'apache', undefined, 'iana']
+
+  Object.keys(db).forEach(function forEachMimeType (type) {
+    var mime = db[type]
+    var exts = mime.extensions
+
+    if (!exts || !exts.length) {
+      return
+    }
+
+    // mime -> extensions
+    extensions[type] = exts
+
+    // extension -> mime
+    for (var i = 0; i < exts.length; i++) {
+      var extension = exts[i]
+
+      if (types[extension]) {
+        var from = preference.indexOf(db[types[extension]].source)
+        var to = preference.indexOf(mime.source)
+
+        if (types[extension] !== 'application/octet-stream' &&
+          (from > to || (from === to && types[extension].substr(0, 12) === 'application/'))) {
+          // skip the remapping
+          continue
+        }
+      }
+
+      // set the extension -> mime
+      types[extension] = type
+    }
+  })
+}
+
+
+/***/ }),
+
+/***/ 41077:
+>>>>>>> 5fc6c86 (remove path input param)
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -71478,6 +71696,7 @@ const fetchWithDebug = async (url, config = {}) => {
 
 /***/ }),
 
+<<<<<<< HEAD
 /***/ 6144:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -71500,6 +71719,9 @@ const path = (0, minimist_1.default)(process.argv.slice(2)).path || '.';
 /***/ }),
 
 /***/ 399:
+=======
+/***/ 70399:
+>>>>>>> 5fc6c86 (remove path input param)
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -71543,7 +71765,7 @@ const semver_1 = __importDefault(__nccwpck_require__(1383));
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
-async function run(pathInput) {
+async function run() {
     const tmpDirs = [];
     try {
         const repository = process.env.GITHUB_REPOSITORY || '';
@@ -71987,12 +72209,22 @@ module.exports = require("zlib");
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
-/******/ 	
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(6144);
-/******/ 	module.exports = __webpack_exports__;
-/******/ 	
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
+(() => {
+"use strict";
+var exports = __webpack_exports__;
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+/**
+ * The entrypoint for the action.
+ */
+const main_1 = __nccwpck_require__(70399);
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+(0, main_1.run)();
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
