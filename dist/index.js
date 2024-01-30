@@ -71493,9 +71493,9 @@ exports.readFileContents = readFileContents;
 // Copy actions files from sourceDir to targetDir, excluding files and folders not relevant to the action
 // Errors if the repo appears to not contain any action files, such as an action.yml file
 function stageActionFiles(actionDir, targetDir) {
-    var actionYmlFound = false;
+    let actionYmlFound = false;
     fs_extra_1.default.copySync(actionDir, targetDir, {
-        filter: (src, dest) => {
+        filter: (src) => {
             const basename = path.basename(src);
             if (basename === 'action.yml' || basename === 'action.yaml') {
                 actionYmlFound = true;
@@ -71820,7 +71820,7 @@ exports.run = run;
 // In each case, the source event should produce a Semantic Version compliant tag representing the code to be packaged.
 function parseSourceSemanticVersion() {
     const event = github.context.eventName;
-    var semverTag = '';
+    let semverTag = '';
     // Grab the raw tag
     if (event === 'release')
         semverTag = github.context.payload.release.tag_name;
