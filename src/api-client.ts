@@ -29,7 +29,7 @@ export async function getRepositoryMetadata(
     )
   }
 
-  return { repoId: data.id, ownerId: data.owner.id }
+  return { repoId: String(data.id), ownerId: String(data.owner.id) }
 }
 
 export async function getContainerRegistryURL(): Promise<URL> {
