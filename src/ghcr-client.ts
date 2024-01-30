@@ -138,7 +138,7 @@ async function uploadLayer(
     )
   }
 
-  const locationResponseHeader = initiateUploadResponse.headers['location']
+  const locationResponseHeader = initiateUploadResponse.headers.get('location')
   if (locationResponseHeader === undefined) {
     throw new Error(
       `No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`
@@ -196,9 +196,8 @@ async function uploadManifest(
       `Unexpected response from PUT manifest ${putResponse.status}`
     )
   }
-
-  const digestResponseHeader = putResponse.headers['docker-content-digest']
-  if (digestResponseHeader === undefined) {
+  const digestResponseHeader = putResponse.headers.get('docker-content-digest')
+  if (digestResponseHeader === undefined || digestResponseHeader === null) {
     throw new Error(
       `No digest header in response from PUT manifest ${manifestEndpoint}`
     )
@@ -207,7 +206,10 @@ async function uploadManifest(
   return digestResponseHeader
 }
 
-const fetchWithDebug = async (url: string, config: RequestInit = {}) => {
+const fetchWithDebug = async (
+  url: string,
+  config: RequestInit = {}
+): Promise<Response> => {
   if (showDebugLog) {
     core.debug(`Request with ${JSON.stringify(config)}`)
   }
@@ -216,7 +218,7 @@ const fetchWithDebug = async (url: string, config: RequestInit = {}) => {
     if (showDebugLog) {
       core.debug(`Response with ${JSON.stringify(response)}`)
     }
-    return response.json()
+    return response
   } catch (error) {
     if (showDebugLog) {
       core.debug(`Error with ${error}`)

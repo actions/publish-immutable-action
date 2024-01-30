@@ -71408,7 +71408,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`);
         throw new Error(`Unexpected response from POST upload ${initiateUploadResponse.status}`);
     }
-    const locationResponseHeader = initiateUploadResponse.headers['location'];
+    const locationResponseHeader = initiateUploadResponse.headers.get('location');
     if (locationResponseHeader === undefined) {
         throw new Error(`No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`);
     }
@@ -71450,8 +71450,8 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     if (putResponse.status !== 201) {
         throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
     }
-    const digestResponseHeader = putResponse.headers['docker-content-digest'];
-    if (digestResponseHeader === undefined) {
+    const digestResponseHeader = putResponse.headers.get('docker-content-digest');
+    if (digestResponseHeader === undefined || digestResponseHeader === null) {
         throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
     }
     return digestResponseHeader;
@@ -71465,7 +71465,7 @@ const fetchWithDebug = async (url, config = {}) => {
         if (showDebugLog) {
             core.debug(`Response with ${JSON.stringify(response)}`);
         }
-        return response.json();
+        return response;
     }
     catch (error) {
         if (showDebugLog) {
