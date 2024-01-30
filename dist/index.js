@@ -71402,7 +71402,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         headers: {
             Authorization: `Bearer ${b64Token}`
         },
-        body: layer
+        body: JSON.stringify(layer)
     });
     if (initiateUploadResponse.status !== 202) {
         core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`);

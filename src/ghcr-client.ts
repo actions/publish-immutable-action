@@ -126,7 +126,7 @@ async function uploadLayer(
     headers: {
       Authorization: `Bearer ${b64Token}`
     },
-    body: layer
+    body: JSON.stringify(layer)
   })
 
   if (initiateUploadResponse.status !== 202) {
@@ -207,7 +207,7 @@ async function uploadManifest(
   return digestResponseHeader
 }
 
-const fetchWithDebug = async (url: string, config = {}) => {
+const fetchWithDebug = async (url: string, config: RequestInit = {}) => {
   if (showDebugLog) {
     core.debug(`Request with ${JSON.stringify(config)}`)
   }
