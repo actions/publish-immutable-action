@@ -1,9 +1,9 @@
 import * as core from '@actions/core'
 import { FileMetadata } from './fs-helper'
 import * as ociContainer from './oci-container'
-import axios from 'axios'
 import * as fsHelper from './fs-helper'
-import axiosDebugLog from 'axios-debug-log'
+
+let showDebugLog = false
 
 // Publish the OCI artifact and return the URL where it can be downloaded
 export async function publishOCIArtifact(
@@ -17,7 +17,7 @@ export async function publishOCIArtifact(
   debugRequests = false
 ): Promise<{ packageURL: URL; manifestDigest: string }> {
   if (debugRequests) {
-    configureRequestDebugLogging()
+    showDebugLog = true
   }
 
   const b64Token = Buffer.from(token).toString('base64')
@@ -95,14 +95,12 @@ async function uploadLayer(
   uploadBlobEndpoint: string,
   b64Token: string
 ): Promise<void> {
-  const checkExistsResponse = await axios.head(
+  const checkExistsResponse = await fetchWithDebug(
     checkBlobEndpoint + layer.digest,
     {
+      method: 'HEAD',
       headers: {
         Authorization: `Bearer ${b64Token}`
-      },
-      validateStatus: () => {
-        return true // Allow non 2xx responses
       }
     }
   )
@@ -123,13 +121,12 @@ async function uploadLayer(
 
   core.info(`Uploading layer ${layer.digest}.`)
 
-  const initiateUploadResponse = await axios.post(uploadBlobEndpoint, layer, {
+  const initiateUploadResponse = await fetchWithDebug(uploadBlobEndpoint, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${b64Token}`
     },
-    validateStatus: () => {
-      return true // Allow non 2xx responses
-    }
+    body: JSON.stringify(layer)
   })
 
   if (initiateUploadResponse.status !== 202) {
@@ -141,7 +138,7 @@ async function uploadLayer(
     )
   }
 
-  const locationResponseHeader = initiateUploadResponse.headers['location']
+  const locationResponseHeader = initiateUploadResponse.headers.get('location')
   if (locationResponseHeader === undefined) {
     throw new Error(
       `No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`
@@ -159,16 +156,15 @@ async function uploadLayer(
     data = fsHelper.readFileContents(file.path)
   }
 
-  const putResponse = await axios.put(uploadBlobUrl, data, {
+  const putResponse = await fetchWithDebug(uploadBlobUrl, {
+    method: 'PUT',
     headers: {
       Authorization: `Bearer ${b64Token}`,
       'Content-Type': 'application/octet-stream',
       'Accept-Encoding': 'gzip',
       'Content-Length': layer.size.toString()
     },
-    validateStatus: () => {
-      return true // Allow non 2xx responses
-    }
+    body: data
   })
 
   if (putResponse.status !== 201) {
@@ -186,14 +182,13 @@ async function uploadManifest(
 ): Promise<string> {
   core.info(`Uploading manifest to ${manifestEndpoint}.`)
 
-  const putResponse = await axios.put(manifestEndpoint, manifestJSON, {
+  const putResponse = await fetchWithDebug(manifestEndpoint, {
+    method: 'PUT',
     headers: {
       Authorization: `Bearer ${b64Token}`,
       'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
     },
-    validateStatus: () => {
-      return true // Allow non 2xx responses
-    }
+    body: manifestJSON
   })
 
   if (putResponse.status !== 201) {
@@ -202,8 +197,8 @@ async function uploadManifest(
     )
   }
 
-  const digestResponseHeader = putResponse.headers['docker-content-digest']
-  if (digestResponseHeader === undefined) {
+  const digestResponseHeader = putResponse.headers.get('docker-content-digest')
+  if (digestResponseHeader === undefined || digestResponseHeader === null) {
     throw new Error(
       `No digest header in response from PUT manifest ${manifestEndpoint}`
     )
@@ -212,16 +207,23 @@ async function uploadManifest(
   return digestResponseHeader
 }
 
-function configureRequestDebugLogging(): void {
-  axiosDebugLog({
-    request: (debug, config) => {
-      core.debug(`Request with ${config}`)
-    },
-    response: (debug, response) => {
-      core.debug(`Response with ${response}`)
-    },
-    error: (debug, error) => {
+const fetchWithDebug = async (
+  url: string,
+  config: RequestInit = {}
+): Promise<Response> => {
+  if (showDebugLog) {
+    core.debug(`Request with ${JSON.stringify(config)}`)
+  }
+  try {
+    const response = await fetch(url, config)
+    if (showDebugLog) {
+      core.debug(`Response with ${JSON.stringify(response)}`)
+    }
+    return response
+  } catch (error) {
+    if (showDebugLog) {
       core.debug(`Error with ${error}`)
     }
-  })
+    throw error
+  }
 }
