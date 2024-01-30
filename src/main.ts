@@ -96,7 +96,7 @@ export async function run(): Promise<void> {
 // In each case, the source event should produce a Semantic Version compliant tag representing the code to be packaged.
 function parseSourceSemanticVersion(): semver.SemVer {
   const event = github.context.eventName
-  var semverTag = ''
+  let semverTag = ''
 
   // Grab the raw tag
   if (event === 'release') semverTag = github.context.payload.release.tag_name
