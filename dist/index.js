@@ -74672,8 +74672,8 @@ async function getRepositoryMetadata(repository, token) {
     const response = await fetch(`${process.env.GITHUB_API_URL}/repos/${repository}`, {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github.v3+json'
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json'
         }
     });
     if (!response.ok) {
@@ -74684,7 +74684,7 @@ async function getRepositoryMetadata(repository, token) {
     if (!data.id || !data.owner.id) {
         throw new Error(`Failed to fetch repository metadata: unexpected response format`);
     }
-    return { repoId: data.id, ownerId: data.owner.id };
+    return { repoId: String(data.id), ownerId: String(data.owner.id) };
 }
 exports.getRepositoryMetadata = getRepositoryMetadata;
 async function getContainerRegistryURL() {
