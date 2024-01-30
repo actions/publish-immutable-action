@@ -49,6 +49,7 @@ runs:
     - name: Generate Provenance Attestation
       uses: github-early-access/generate-build-provenance@main
       id: build-provenance
+      if: contains(github.server_url, 'github.com') || contains(github.server_url, 'ghe.com')
       with:
         subject-name: ${{github.repository}}_${{github.ref}}
         subject-digest: ${{steps.publish.outputs.package-manifest-sha}}
