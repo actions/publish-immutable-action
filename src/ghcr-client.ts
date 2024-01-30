@@ -206,7 +206,6 @@ async function uploadManifest(
   return digestResponseHeader
 }
 
-
 const fetchWithDebug = async (
   url: string,
   config: RequestInit = {}
