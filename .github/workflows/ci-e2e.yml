@@ -36,7 +36,7 @@ jobs:
                 | jq '.workflow_runs[] | select(.name=="Publish Actions Package" and (.display_title | contains("${{ github.sha }}"))) | .status, .conclusion')
 
             # split the RESULT into an array
-            RESULT=("$RESULT")
+            mapfile -t RESULT <<< "$RESULT"
             STATUS=$(echo "${RESULT[0]}" | sed -e 's/^"//' -e 's/"$//')
             CONCLUSION=$(echo "${RESULT[1]}" | sed -e 's/^"//' -e 's/"$//')
             if [ -z "$STATUS" ]; then
