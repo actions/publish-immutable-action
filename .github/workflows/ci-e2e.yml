@@ -25,18 +25,18 @@ jobs:
       - name: Wait for successful publish
         id: wait-for-successful-publish
         run: |
-          START_TIME="$SECONDS"
+          START_TIME=$SECONDS
           TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           while (( SECONDS - START_TIME < 60 )); do
             echo "Polling for workflow created after $TIMESTAMP"
-            RESULT="$(curl -s -L -H "Accept: application/vnd.github+json" \
+            RESULT=$(curl -s -L -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer ${{ secrets.PAT }}" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 "https://api.github.com/repos/immutable-actions/test-publish-internal-ts-action/actions/runs?created=>$TIMESTAMP" \
-                | jq '.workflow_runs[] | select(.name=="Publish Actions Package" and (.display_title | contains("${{ github.sha }}"))) | .status, .conclusion')"
+                | jq '.workflow_runs[] | select(.name=="Publish Actions Package" and (.display_title | contains("${{ github.sha }}"))) | .status, .conclusion')
 
             # split the RESULT into an array
-            RESULT=("$RESULT")
+            RESULT=($RESULT)
             STATUS=$(echo "${RESULT[0]}" | sed -e 's/^"//' -e 's/"$//')
             CONCLUSION=$(echo "${RESULT[1]}" | sed -e 's/^"//' -e 's/"$//')
             if [ -z "$STATUS" ]; then
