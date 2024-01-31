@@ -74473,7 +74473,7 @@ const tar = __importStar(__nccwpck_require__(74674));
 const archiver = __importStar(__nccwpck_require__(43084));
 const crypto = __importStar(__nccwpck_require__(6113));
 function createTempDir(subDirName) {
-    const runnerTempDir = process.env['RUNNER_TEMP'] || '';
+    const runnerTempDir = process.env.RUNNER_TEMP || '';
     const tempDir = path.join(runnerTempDir, subDirName);
     if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir);

@@ -12,7 +12,7 @@ export interface FileMetadata {
 }
 
 export function createTempDir(subDirName: string): string {
-  const runnerTempDir: string = process.env['RUNNER_TEMP'] || ''
+  const runnerTempDir: string = process.env.RUNNER_TEMP || ''
   const tempDir = path.join(runnerTempDir, subDirName)
 
   if (!fs.existsSync(tempDir)) {

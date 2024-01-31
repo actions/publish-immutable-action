@@ -10,7 +10,7 @@ describe('stageActionFiles', () => {
   let stagingDir: string
 
   beforeEach(() => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     sourceDir = fsHelper.createTempDir('source')
     fs.mkdirSync(`${sourceDir}/src`)
     fs.writeFileSync(`${sourceDir}/src/main.js`, fileContent)
@@ -72,7 +72,7 @@ describe('createArchives', () => {
   let archiveDir: string
 
   beforeAll(() => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     stageDir = fsHelper.createTempDir('staging')
     fs.writeFileSync(`${stageDir}/hello.txt`, fileContent)
     fs.writeFileSync(`${stageDir}/world.txt`, fileContent)
@@ -156,7 +156,7 @@ describe('createTempDir', () => {
   })
 
   it('creates a temporary directory', () => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     const tmpDir = fsHelper.createTempDir('subdir')
 
     expect(fs.existsSync(tmpDir)).toEqual(true)
@@ -164,7 +164,7 @@ describe('createTempDir', () => {
   })
 
   it('creates a unique temporary directory', () => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     const dir1 = fsHelper.createTempDir('dir1')
     dirs.push(dir1)
 
@@ -179,7 +179,7 @@ describe('isDirectory', () => {
   let dir: string
 
   beforeEach(() => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     dir = fsHelper.createTempDir('subdir')
   })
 
@@ -202,7 +202,7 @@ describe('readFileContents', () => {
   let dir: string
 
   beforeEach(() => {
-    process.env['RUNNER_TEMP'] = '/tmp'
+    process.env.RUNNER_TEMP = '/tmp'
     dir = fsHelper.createTempDir('subdir')
   })
 
