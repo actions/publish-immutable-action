@@ -11,8 +11,6 @@ import semver from 'semver'
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 export async function run(): Promise<void> {
-  const tmpDirs: string[] = []
-
   try {
     const repository: string = process.env.GITHUB_REPOSITORY || ''
     if (repository === '') {
@@ -34,13 +32,11 @@ export async function run(): Promise<void> {
     const semanticVersion = parseSourceSemanticVersion()
 
     // Create a temporary directory to stage files for packaging in archives
-    const stagedActionFilesDir = fsHelper.createTempDir()
-    tmpDirs.push(stagedActionFilesDir)
+    const stagedActionFilesDir = fsHelper.createTempDir('staging')
     fsHelper.stageActionFiles('.', stagedActionFilesDir)
 
     // Create a temporary directory to store the archives
-    const archiveDir = fsHelper.createTempDir()
-    tmpDirs.push(archiveDir)
+    const archiveDir = fsHelper.createTempDir('archive')
     const archives = await fsHelper.createArchives(
       stagedActionFilesDir,
       archiveDir
@@ -82,13 +78,6 @@ export async function run(): Promise<void> {
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
-  } finally {
-    // Clean up any temporary directories that exist
-    for (const tmpDir of tmpDirs) {
-      if (tmpDir !== '') {
-        fsHelper.removeDir(tmpDir)
-      }
-    }
   }
 }
 
