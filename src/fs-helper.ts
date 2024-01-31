@@ -4,11 +4,16 @@ import * as path from 'path'
 import * as tar from 'tar'
 import * as archiver from 'archiver'
 import * as crypto from 'crypto'
-import * as os from 'os'
 
-export function createTempDir(): string {
-  const randomDirName = crypto.randomBytes(4).toString('hex')
-  const tempDir = path.join(os.tmpdir(), randomDirName)
+export interface FileMetadata {
+  path: string
+  size: number
+  sha256: string
+}
+
+export function createTempDir(subDirName: string): string {
+  const runnerTempDir: string = process.env.RUNNER_TEMP || ''
+  const tempDir = path.join(runnerTempDir, subDirName)
 
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir)
@@ -17,23 +22,11 @@ export function createTempDir(): string {
   return tempDir
 }
 
-export function removeDir(dir: string): void {
-  if (fs.existsSync(dir)) {
-    fs.rmSync(dir, { recursive: true })
-  }
-}
-
-export interface FileMetadata {
-  path: string
-  size: number
-  sha256: string
-}
-
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
 export async function createArchives(
   distPath: string,
-  archiveTargetPath: string = createTempDir()
+  archiveTargetPath: string
 ): Promise<{ zipFile: FileMetadata; tarFile: FileMetadata }> {
   const zipPath = path.join(archiveTargetPath, `archive.zip`)
   const tarPath = path.join(archiveTargetPath, `archive.tar.gz`)

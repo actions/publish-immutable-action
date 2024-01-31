@@ -74379,32 +74379,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
+exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
 const tar = __importStar(__nccwpck_require__(74674));
 const archiver = __importStar(__nccwpck_require__(43084));
 const crypto = __importStar(__nccwpck_require__(6113));
-const os = __importStar(__nccwpck_require__(22037));
-function createTempDir() {
-    const randomDirName = crypto.randomBytes(4).toString('hex');
-    const tempDir = path.join(os.tmpdir(), randomDirName);
+function createTempDir(subDirName) {
+    const runnerTempDir = process.env.RUNNER_TEMP || '';
+    const tempDir = path.join(runnerTempDir, subDirName);
     if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir);
     }
     return tempDir;
 }
 exports.createTempDir = createTempDir;
-function removeDir(dir) {
-    if (fs.existsSync(dir)) {
-        fs.rmSync(dir, { recursive: true });
-    }
-}
-exports.removeDir = removeDir;
 // Creates both a tar.gz and zip archive of the given directory and returns the paths to both archives (stored in the provided target directory)
 // as well as the size/sha256 hash of each file.
-async function createArchives(distPath, archiveTargetPath = createTempDir()) {
+async function createArchives(distPath, archiveTargetPath) {
     const zipPath = path.join(archiveTargetPath, `archive.zip`);
     const tarPath = path.join(archiveTargetPath, `archive.tar.gz`);
     const createZipPromise = new Promise((resolve, reject) => {
@@ -74709,7 +74702,6 @@ const semver_1 = __importDefault(__nccwpck_require__(11383));
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
-    const tmpDirs = [];
     try {
         const repository = process.env.GITHUB_REPOSITORY || '';
         if (repository === '') {
@@ -74728,12 +74720,10 @@ async function run() {
         }
         const semanticVersion = parseSourceSemanticVersion();
         // Create a temporary directory to stage files for packaging in archives
-        const stagedActionFilesDir = fsHelper.createTempDir();
-        tmpDirs.push(stagedActionFilesDir);
+        const stagedActionFilesDir = fsHelper.createTempDir('staging');
         fsHelper.stageActionFiles('.', stagedActionFilesDir);
         // Create a temporary directory to store the archives
-        const archiveDir = fsHelper.createTempDir();
-        tmpDirs.push(archiveDir);
+        const archiveDir = fsHelper.createTempDir('archive');
         const archives = await fsHelper.createArchives(stagedActionFilesDir, archiveDir);
         const { repoId, ownerId } = await api.getRepositoryMetadata(repository, token);
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, repoId, ownerId, sourceCommit, semanticVersion.raw, new Date());
@@ -74748,14 +74738,6 @@ async function run() {
         // Fail the workflow run if an error occurs
         if (error instanceof Error)
             core.setFailed(error.message);
-    }
-    finally {
-        // Clean up any temporary directories that exist
-        for (const tmpDir of tmpDirs) {
-            if (tmpDir !== '') {
-                fsHelper.removeDir(tmpDir);
-            }
-        }
     }
 }
 exports.run = run;
