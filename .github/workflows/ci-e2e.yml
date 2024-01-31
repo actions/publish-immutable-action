@@ -26,7 +26,7 @@ jobs:
         id: wait-for-successful-publish
         run: |
           START_TIME="$SECONDS"
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           while (( SECONDS - START_TIME < 60 )); do
             echo "Polling for workflow created after $TIMESTAMP"
             RESULT=$(curl -s -L -H "Accept: application/vnd.github+json" \
