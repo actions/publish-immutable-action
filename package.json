@@ -84,7 +84,7 @@
     "@types/node": "^20.11.13",
     "@types/tar": "^6.1.11",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/parser": "^6.19.0",
+    "@typescript-eslint/parser": "^6.20.0",
     "@vercel/ncc": "^0.38.1",
     "eslint": "^8.54.0",
     "eslint-plugin-github": "^4.10.1",
