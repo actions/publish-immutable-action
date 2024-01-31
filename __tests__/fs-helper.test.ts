@@ -10,12 +10,13 @@ describe('stageActionFiles', () => {
   let stagingDir: string
 
   beforeEach(() => {
-    sourceDir = fsHelper.createTempDir()
+    process.env['RUNNER_TEMP'] = '/tmp'
+    sourceDir = fsHelper.createTempDir('source')
     fs.mkdirSync(`${sourceDir}/src`)
     fs.writeFileSync(`${sourceDir}/src/main.js`, fileContent)
     fs.writeFileSync(`${sourceDir}/src/other.js`, fileContent)
 
-    stagingDir = fsHelper.createTempDir()
+    stagingDir = fsHelper.createTempDir('staging')
   })
 
   afterEach(() => {
@@ -67,36 +68,40 @@ describe('stageActionFiles', () => {
 })
 
 describe('createArchives', () => {
-  let tmpDir: string
-  let distDir: string
+  let stageDir: string
+  let archiveDir: string
 
   beforeAll(() => {
-    distDir = fsHelper.createTempDir()
-    fs.writeFileSync(`${distDir}/hello.txt`, fileContent)
-    fs.writeFileSync(`${distDir}/world.txt`, fileContent)
+    process.env['RUNNER_TEMP'] = '/tmp'
+    stageDir = fsHelper.createTempDir('staging')
+    fs.writeFileSync(`${stageDir}/hello.txt`, fileContent)
+    fs.writeFileSync(`${stageDir}/world.txt`, fileContent)
   })
 
   beforeEach(() => {
-    tmpDir = fsHelper.createTempDir()
+    archiveDir = fsHelper.createTempDir('archive')
   })
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true })
+    fs.rmSync(archiveDir, { recursive: true })
   })
 
   afterAll(() => {
-    fs.rmSync(distDir, { recursive: true })
+    fs.rmSync(stageDir, { recursive: true })
   })
 
   it('creates archives', async () => {
-    const { zipFile, tarFile } = await fsHelper.createArchives(distDir, tmpDir)
+    const { zipFile, tarFile } = await fsHelper.createArchives(
+      stageDir,
+      archiveDir
+    )
 
-    expect(zipFile.path).toEqual(`${tmpDir}/archive.zip`)
+    expect(zipFile.path).toEqual(`${archiveDir}/archive.zip`)
     expect(fs.existsSync(zipFile.path)).toEqual(true)
     expect(fs.statSync(zipFile.path).size).toBeGreaterThan(0)
     expect(zipFile.sha256.startsWith('sha256:')).toEqual(true)
 
-    expect(tarFile.path).toEqual(`${tmpDir}/archive.tar.gz`)
+    expect(tarFile.path).toEqual(`${archiveDir}/archive.tar.gz`)
     expect(fs.existsSync(tarFile.path)).toEqual(true)
     expect(fs.statSync(tarFile.path).size).toBeGreaterThan(0)
     expect(tarFile.sha256.startsWith('sha256:')).toEqual(true)
@@ -150,20 +155,20 @@ describe('createTempDir', () => {
     }
   })
 
-  it('creates a temporary directory in the OS temporary dir', () => {
-    const tmpDir = fsHelper.createTempDir()
-    dirs.push(tmpDir)
+  it('creates a temporary directory', () => {
+    process.env['RUNNER_TEMP'] = '/tmp'
+    const tmpDir = fsHelper.createTempDir('subdir')
 
     expect(fs.existsSync(tmpDir)).toEqual(true)
     expect(fs.statSync(tmpDir).isDirectory()).toEqual(true)
-    expect(tmpDir.startsWith(os.tmpdir())).toEqual(true)
   })
 
   it('creates a unique temporary directory', () => {
-    const dir1 = fsHelper.createTempDir()
+    process.env['RUNNER_TEMP'] = '/tmp'
+    const dir1 = fsHelper.createTempDir('dir1')
     dirs.push(dir1)
 
-    const dir2 = fsHelper.createTempDir()
+    const dir2 = fsHelper.createTempDir('dir2')
     dirs.push(dir2)
 
     expect(dir1).not.toEqual(dir2)
@@ -174,7 +179,8 @@ describe('isDirectory', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = fsHelper.createTempDir()
+    process.env['RUNNER_TEMP'] = '/tmp'
+    dir = fsHelper.createTempDir('subdir')
   })
 
   afterEach(() => {
@@ -196,7 +202,8 @@ describe('readFileContents', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = fsHelper.createTempDir()
+    process.env['RUNNER_TEMP'] = '/tmp'
+    dir = fsHelper.createTempDir('subdir')
   })
 
   afterEach(() => {
@@ -208,24 +215,5 @@ describe('readFileContents', () => {
     fs.writeFileSync(tempFile, fileContent)
 
     expect(fsHelper.readFileContents(tempFile).toString()).toEqual(fileContent)
-  })
-})
-
-describe('removeDir', () => {
-  let dir: string
-
-  beforeEach(() => {
-    dir = fsHelper.createTempDir()
-  })
-
-  afterEach(() => {
-    if (fs.existsSync(dir)) {
-      fs.rmSync(dir, { recursive: true })
-    }
-  })
-
-  it('removes a directory', () => {
-    fsHelper.removeDir(dir)
-    expect(fs.existsSync(dir)).toEqual(false)
   })
 })

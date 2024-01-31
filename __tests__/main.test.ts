@@ -21,7 +21,6 @@ let setOutputMock: jest.SpyInstance
 // Mock the filesystem helper
 let createTempDirMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
-let removeDirMock: jest.SpyInstance
 let stageActionFilesMock: jest.SpyInstance
 
 // Mock the GHCR Client
@@ -46,7 +45,6 @@ describe('run', () => {
     createArchivesMock = jest
       .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
-    removeDirMock = jest.spyOn(fsHelper, 'removeDir').mockImplementation()
     stageActionFilesMock = jest
       .spyOn(fsHelper, 'stageActionFiles')
       .mockImplementation()
@@ -327,7 +325,7 @@ describe('run', () => {
       }
     }
 
-    createTempDirMock.mockImplementation(() => '/tmp/test')
+    createTempDirMock.mockImplementation(() => '/tmp/test/subdir')
 
     createArchivesMock.mockImplementation(() => {
       return {
@@ -381,12 +379,6 @@ describe('run', () => {
     expect(setOutputMock).toHaveBeenCalledWith(
       'package-manifest-sha',
       'sha256:my-test-digest'
-    )
-
-    // Expect all the temp files to be cleaned up
-    expect(removeDirMock).toHaveBeenCalledWith('/tmp/test')
-    expect(removeDirMock).toHaveBeenCalledTimes(
-      createTempDirMock.mock.calls.length
     )
   })
 })
