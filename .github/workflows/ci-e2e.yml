@@ -37,8 +37,8 @@ jobs:
 
             # split the RESULT into an array
             RESULT=("$RESULT")
-            STATUS="$(echo ${RESULT[0]} | sed -e 's/^"//' -e 's/"$//')"
-            CONCLUSION="$(echo ${RESULT[1]} | sed -e 's/^"//' -e 's/"$//')"
+            STATUS=$(echo "${RESULT[0]}" | sed -e 's/^"//' -e 's/"$//')
+            CONCLUSION=$(echo "${RESULT[1]}" | sed -e 's/^"//' -e 's/"$//')
             if [ -z "$STATUS" ]; then
               echo "No workflow found yet"
             else
