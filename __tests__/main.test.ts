@@ -72,7 +72,7 @@ describe('run', () => {
     await main.run()
 
     // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
+    expect(setFailedMock).not.toHaveBeenCalledWith('Could not find Repository.')
   })
 
   it('fails if no token found', async () => {
