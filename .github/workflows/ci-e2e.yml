@@ -27,7 +27,7 @@ jobs:
         run: |
           START_TIME="$SECONDS"
           TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          while (( SECONDS - START_TIME < 60 )); do
+          while (( SECONDS - START_TIME < 90 )); do
             echo "Polling for workflow created after $TIMESTAMP"
             RESULT=$(curl -s -L -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer ${{ secrets.PAT }}" \
