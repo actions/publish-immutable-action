@@ -163,7 +163,7 @@ async function uploadLayer(
     headers: {
       Authorization: `Bearer ${b64Token}`,
       'Content-Type': 'application/octet-stream',
-      'Accept-Encoding': 'gzip', // TODO: What about for the config layer?
+      'Accept-Encoding': 'gzip',
       'Content-Length': layer.size.toString()
     },
     validateStatus: () => {

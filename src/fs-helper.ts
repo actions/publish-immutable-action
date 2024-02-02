@@ -48,7 +48,7 @@ export async function createArchives(
     })
 
     archive.pipe(output)
-    archive.directory(distPath, false) // TODO: make sure this doesn't include dirs that start with ., same with below
+    archive.directory(distPath, false)
     archive.finalize()
   })
 
@@ -57,7 +57,7 @@ export async function createArchives(
       .c(
         {
           file: tarPath,
-          C: distPath, // Change to the source directory for relative paths (TODO)
+          C: distPath,
           gzip: true
         },
         ['.']

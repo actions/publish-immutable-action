@@ -53,7 +53,6 @@ export function createActionPackageManifest(
   return manifest
 }
 
-// TODO: is this ok hardcoded?
 function createConfigLayer(): Layer {
   const configLayer: Layer = {
     mediaType: 'application/vnd.github.actions.package.config.v1+json',
