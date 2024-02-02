@@ -74413,14 +74413,14 @@ async function createArchives(distPath, archiveTargetPath) {
             resolve(fileMetadata(zipPath));
         });
         archive.pipe(output);
-        archive.directory(distPath, false); // TODO: make sure this doesn't include dirs that start with ., same with below
+        archive.directory(distPath, false);
         archive.finalize();
     });
     const createTarPromise = new Promise((resolve, reject) => {
         tar
             .c({
             file: tarPath,
-            C: distPath, // Change to the source directory for relative paths (TODO)
+            C: distPath,
             gzip: true
         }, ['.'])
             // eslint-disable-next-line github/no-then
@@ -74608,7 +74608,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         headers: {
             Authorization: `Bearer ${b64Token}`,
             'Content-Type': 'application/octet-stream',
-            'Accept-Encoding': 'gzip', // TODO: What about for the config layer?
+            'Accept-Encoding': 'gzip',
             'Content-Length': layer.size.toString()
         },
         validateStatus: () => {
@@ -74801,7 +74801,6 @@ function createActionPackageManifest(tarFile, zipFile, repository, repoId, owner
     return manifest;
 }
 exports.createActionPackageManifest = createActionPackageManifest;
-// TODO: is this ok hardcoded?
 function createConfigLayer() {
     const configLayer = {
         mediaType: 'application/vnd.github.actions.package.config.v1+json',
