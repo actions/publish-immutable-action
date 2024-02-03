@@ -20572,21 +20572,12 @@ module.exports = copySync
 "use strict";
 
 
-<<<<<<< HEAD
-const fs = __nccwpck_require__(61176)
-const path = __nccwpck_require__(71017)
-const { mkdirs } = __nccwpck_require__(98605)
-const { pathExists } = __nccwpck_require__(43835)
-const { utimesMillis } = __nccwpck_require__(52548)
-const stat = __nccwpck_require__(73901)
-=======
-const fs = __nccwpck_require__(7758)
+const fs = __nccwpck_require__(1176)
 const path = __nccwpck_require__(1017)
-const mkdirs = (__nccwpck_require__(8605).mkdirs)
-const pathExists = (__nccwpck_require__(3835).pathExists)
-const utimesMillis = (__nccwpck_require__(2548).utimesMillis)
+const { mkdirs } = __nccwpck_require__(8605)
+const { pathExists } = __nccwpck_require__(3835)
+const { utimesMillis } = __nccwpck_require__(2548)
 const stat = __nccwpck_require__(3901)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function copy (src, dest, opts = {}) {
   if (typeof opts === 'function') {
@@ -20828,17 +20819,10 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
 const u = (__nccwpck_require__(9046).fromPromise)
-const path = __nccwpck_require__(71017)
-const fs = __nccwpck_require__(61176)
-const mkdir = __nccwpck_require__(98605)
-=======
-const u = (__nccwpck_require__(9046).fromCallback)
 const path = __nccwpck_require__(1017)
-const fs = __nccwpck_require__(7758)
+const fs = __nccwpck_require__(1176)
 const mkdir = __nccwpck_require__(8605)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function createFile (file) {
   let stats
@@ -20940,21 +20924,12 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
 const u = (__nccwpck_require__(9046).fromPromise)
-const path = __nccwpck_require__(71017)
-const fs = __nccwpck_require__(61176)
-const mkdir = __nccwpck_require__(98605)
-const { pathExists } = __nccwpck_require__(43835)
-const { areIdentical } = __nccwpck_require__(73901)
-=======
-const u = (__nccwpck_require__(9046).fromCallback)
 const path = __nccwpck_require__(1017)
-const fs = __nccwpck_require__(7758)
+const fs = __nccwpck_require__(1176)
 const mkdir = __nccwpck_require__(8605)
-const pathExists = (__nccwpck_require__(3835).pathExists)
+const { pathExists } = __nccwpck_require__(3835)
 const { areIdentical } = __nccwpck_require__(3901)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function createLink (srcpath, dstpath) {
   let dstStat
@@ -21021,17 +20996,11 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
-const path = __nccwpck_require__(71017)
-const fs = __nccwpck_require__(61176)
-const { pathExists } = __nccwpck_require__(43835)
+const path = __nccwpck_require__(1017)
+const fs = __nccwpck_require__(1176)
+const { pathExists } = __nccwpck_require__(3835)
 
 const u = (__nccwpck_require__(9046).fromPromise)
-=======
-const path = __nccwpck_require__(1017)
-const fs = __nccwpck_require__(7758)
-const pathExists = (__nccwpck_require__(3835).pathExists)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 /**
  * Function that returns two types of paths, one relative to symlink, and one
@@ -21136,12 +21105,8 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
-const fs = __nccwpck_require__(61176)
+const fs = __nccwpck_require__(1176)
 const u = (__nccwpck_require__(9046).fromPromise)
-=======
-const fs = __nccwpck_require__(7758)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function symlinkType (srcpath, type) {
   if (type) return type
@@ -21182,35 +21147,16 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
 const u = (__nccwpck_require__(9046).fromPromise)
-const path = __nccwpck_require__(71017)
-const fs = __nccwpck_require__(61176)
-
-const { mkdirs, mkdirsSync } = __nccwpck_require__(98605)
-
-const { symlinkPaths, symlinkPathsSync } = __nccwpck_require__(53727)
-const { symlinkType, symlinkTypeSync } = __nccwpck_require__(18254)
-
-const { pathExists } = __nccwpck_require__(43835)
-=======
-const u = (__nccwpck_require__(9046).fromCallback)
 const path = __nccwpck_require__(1017)
 const fs = __nccwpck_require__(1176)
-const _mkdirs = __nccwpck_require__(8605)
-const mkdirs = _mkdirs.mkdirs
-const mkdirsSync = _mkdirs.mkdirsSync
 
-const _symlinkPaths = __nccwpck_require__(3727)
-const symlinkPaths = _symlinkPaths.symlinkPaths
-const symlinkPathsSync = _symlinkPaths.symlinkPathsSync
+const { mkdirs, mkdirsSync } = __nccwpck_require__(8605)
 
-const _symlinkType = __nccwpck_require__(8254)
-const symlinkType = _symlinkType.symlinkType
-const symlinkTypeSync = _symlinkType.symlinkTypeSync
+const { symlinkPaths, symlinkPathsSync } = __nccwpck_require__(3727)
+const { symlinkType, symlinkTypeSync } = __nccwpck_require__(8254)
 
-const pathExists = (__nccwpck_require__(3835).pathExists)
->>>>>>> 1a705c3 (replace axios with fetch)
+const { pathExists } = __nccwpck_require__(3835)
 
 const { areIdentical } = __nccwpck_require__(3901)
 
@@ -21695,23 +21641,13 @@ module.exports = moveSync
 "use strict";
 
 
-<<<<<<< HEAD
-const fs = __nccwpck_require__(61176)
-const path = __nccwpck_require__(71017)
-const { copy } = __nccwpck_require__(61335)
-const { remove } = __nccwpck_require__(47357)
-const { mkdirp } = __nccwpck_require__(98605)
-const { pathExists } = __nccwpck_require__(43835)
-const stat = __nccwpck_require__(73901)
-=======
-const fs = __nccwpck_require__(7758)
+const fs = __nccwpck_require__(1176)
 const path = __nccwpck_require__(1017)
-const copy = (__nccwpck_require__(1335).copy)
-const remove = (__nccwpck_require__(7357).remove)
-const mkdirp = (__nccwpck_require__(8605).mkdirp)
-const pathExists = (__nccwpck_require__(3835).pathExists)
+const { copy } = __nccwpck_require__(1335)
+const { remove } = __nccwpck_require__(7357)
+const { mkdirp } = __nccwpck_require__(8605)
+const { pathExists } = __nccwpck_require__(3835)
 const stat = __nccwpck_require__(3901)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function move (src, dest, opts = {}) {
   const overwrite = opts.overwrite || opts.clobber || false
@@ -21772,19 +21708,11 @@ module.exports = move
 "use strict";
 
 
-<<<<<<< HEAD
 const u = (__nccwpck_require__(9046).fromPromise)
-const fs = __nccwpck_require__(61176)
-const path = __nccwpck_require__(71017)
-const mkdir = __nccwpck_require__(98605)
-const pathExists = (__nccwpck_require__(43835).pathExists)
-=======
-const u = (__nccwpck_require__(9046).fromCallback)
-const fs = __nccwpck_require__(7758)
+const fs = __nccwpck_require__(1176)
 const path = __nccwpck_require__(1017)
 const mkdir = __nccwpck_require__(8605)
 const pathExists = (__nccwpck_require__(3835).pathExists)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function outputFile (file, data, encoding = 'utf-8') {
   const dir = path.dirname(file)
@@ -21864,15 +21792,9 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
-const fs = __nccwpck_require__(61176)
-const path = __nccwpck_require__(71017)
-const u = (__nccwpck_require__(9046).fromPromise)
-=======
 const fs = __nccwpck_require__(1176)
 const path = __nccwpck_require__(1017)
-const util = __nccwpck_require__(3837)
->>>>>>> 1a705c3 (replace axios with fetch)
+const u = (__nccwpck_require__(9046).fromPromise)
 
 function getStats (src, dest, opts) {
   const statFunc = opts.dereference
@@ -22036,12 +21958,8 @@ module.exports = {
 "use strict";
 
 
-<<<<<<< HEAD
-const fs = __nccwpck_require__(61176)
+const fs = __nccwpck_require__(1176)
 const u = (__nccwpck_require__(9046).fromPromise)
-=======
-const fs = __nccwpck_require__(7758)
->>>>>>> 1a705c3 (replace axios with fetch)
 
 async function utimesMillis (path, atime, mtime) {
   // if (!HAS_MILLIS_RES) return fs.utimes(path, atime, mtime, callback)
@@ -70922,28 +70840,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-<<<<<<< HEAD
 exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.createTempDir = void 0;
-const fs = __importStar(__nccwpck_require__(57147));
-=======
-exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.removeDir = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
->>>>>>> 1a705c3 (replace axios with fetch)
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(1017));
 const tar = __importStar(__nccwpck_require__(4674));
 const archiver = __importStar(__nccwpck_require__(3084));
 const crypto = __importStar(__nccwpck_require__(6113));
-<<<<<<< HEAD
 function createTempDir(subDirName) {
     const runnerTempDir = process.env.RUNNER_TEMP || '';
     const tempDir = path.join(runnerTempDir, subDirName);
-=======
-const os = __importStar(__nccwpck_require__(2037));
-function createTempDir() {
-    const randomDirName = crypto.randomBytes(4).toString('hex');
-    const tempDir = path.join(os.tmpdir(), randomDirName);
->>>>>>> 1a705c3 (replace axios with fetch)
     if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir);
     }
