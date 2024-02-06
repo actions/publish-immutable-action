@@ -21,7 +21,7 @@ runs:
   using: 'composite'
   steps:
     - name: Publish Action Package
-      run: 'npm --prefix ${{github.action_path}} start'
+      run: 'npm --prefix "${{github.action_path}}" start'
       shell: bash
       id: publish
       env:
