@@ -74596,49 +74596,59 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
     }
     const pathname = `${locationResponseHeader}?digest=${layer.digest}`;
     const uploadBlobUrl = new URL(pathname, registryURL).toString();
-    // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
-    let data;
-    if (file.size === 0) {
-        data = Buffer.alloc(0);
-    }
-    else {
-        data = fsHelper.readFileContents(file.path);
-    }
-    const putResponse = await axios_1.default.put(uploadBlobUrl, data, {
-        headers: {
-            Authorization: `Bearer ${b64Token}`,
-            'Content-Type': 'application/octet-stream',
-            'Accept-Encoding': 'gzip',
-            'Content-Length': layer.size.toString()
-        },
-        validateStatus: () => {
-            return true; // Allow non 2xx responses
+    // PUSH EVERYTHING TWICE!!!
+    for (let i = 0; i < 2; i++) {
+        core.info(`Doing it ${i}.`);
+        // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
+        let data;
+        if (file.size === 0) {
+            data = Buffer.alloc(0);
         }
-    });
-    if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
+        else {
+            data = fsHelper.readFileContents(file.path);
+        }
+        const putResponse = await axios_1.default.put(uploadBlobUrl, data, {
+            headers: {
+                Authorization: `Bearer ${b64Token}`,
+                'Content-Type': 'application/octet-stream',
+                'Accept-Encoding': 'gzip',
+                'Content-Length': layer.size.toString()
+            },
+            validateStatus: () => {
+                return true; // Allow non 2xx responses
+            }
+        });
+        if (putResponse.status !== 201) {
+            throw new Error(`Unexpected response from ${i} PUT upload ${putResponse.status} for layer ${layer.digest}`);
+        }
     }
 }
 // Uploads the manifest and returns the digest returned by GHCR
 async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     core.info(`Uploading manifest to ${manifestEndpoint}.`);
-    const putResponse = await axios_1.default.put(manifestEndpoint, manifestJSON, {
-        headers: {
-            Authorization: `Bearer ${b64Token}`,
-            'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
-        },
-        validateStatus: () => {
-            return true; // Allow non 2xx responses
+    let result = '';
+    // PUSH EVERYTHING TWICE!!!
+    for (let i = 0; i < 2; i++) {
+        core.info(`Doing it ${i}.`);
+        const putResponse = await axios_1.default.put(manifestEndpoint, manifestJSON, {
+            headers: {
+                Authorization: `Bearer ${b64Token}`,
+                'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
+            },
+            validateStatus: () => {
+                return true; // Allow non 2xx responses
+            }
+        });
+        if (putResponse.status !== 201) {
+            throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
         }
-    });
-    if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
+        const digestResponseHeader = putResponse.headers['docker-content-digest'];
+        if (digestResponseHeader === undefined) {
+            throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
+        }
+        result = digestResponseHeader;
     }
-    const digestResponseHeader = putResponse.headers['docker-content-digest'];
-    if (digestResponseHeader === undefined) {
-        throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
-    }
-    return digestResponseHeader;
+    return result;
 }
 function configureRequestDebugLogging() {
     (0, axios_debug_log_1.default)({
