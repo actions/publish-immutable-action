@@ -71089,21 +71089,14 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     return digestResponseHeader;
 }
 const fetchWithDebug = async (url, config = {}) => {
-    const debugLogs = core.isDebug();
-    if (debugLogs) {
-        core.debug(`Request from ${url} with config: ${JSON.stringify(config)}`);
-    }
+    core.debug(`Request from ${url} with config: ${JSON.stringify(config)}`);
     try {
         const response = await fetch(url, config);
-        if (debugLogs) {
-            core.debug(`Response with ${JSON.stringify(response)}`);
-        }
+        core.debug(`Response with ${JSON.stringify(response)}`);
         return response;
     }
     catch (error) {
-        if (debugLogs) {
-            core.debug(`Error with ${error}`);
-        }
+        core.debug(`Error with ${error}`);
         throw error;
     }
 };
