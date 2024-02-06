@@ -74579,7 +74579,9 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         core.info(`Layer ${layer.digest} already exists. Skipping upload. - HA I lied... I'm going to push anyway`);
         // return
     }
-    if (checkExistsResponse.status !== 404) {
+    // need to allow 200 so that we can lie...
+    if (checkExistsResponse.status !== 404 &&
+        checkExistsResponse.status !== 200) {
         throw new Error(`Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status} ${checkExistsResponse.statusText}`);
     }
     core.info(`Uploading layer ${layer.digest}.`);

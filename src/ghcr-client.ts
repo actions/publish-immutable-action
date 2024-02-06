@@ -122,7 +122,11 @@ async function uploadLayer(
     // return
   }
 
-  if (checkExistsResponse.status !== 404) {
+  // need to allow 200 so that we can lie...
+  if (
+    checkExistsResponse.status !== 404 &&
+    checkExistsResponse.status !== 200
+  ) {
     throw new Error(
       `Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status} ${checkExistsResponse.statusText}`
     )
