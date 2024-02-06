@@ -21,7 +21,7 @@ runs:
   using: 'composite'
   steps:
     - name: Publish Action Package
-      run: 'node ${{github.action_path}}/dist/index.js'
+      run: 'npm --prefix ${{github.action_path}} start'
       shell: bash
       id: publish
       env:
