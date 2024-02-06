@@ -119,7 +119,7 @@ async function uploadLayer(
     core.info(
       `Layer ${layer.digest} already exists. Skipping upload. - HA I lied... I'm going to push anyway`
     )
-    return
+    // return
   }
 
   if (checkExistsResponse.status !== 404) {
