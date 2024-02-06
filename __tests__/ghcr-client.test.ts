@@ -22,6 +22,126 @@ const tarFile: fsHelper.FileMetadata = {
   sha256: genericSha
 }
 
+const headMockNoExistingBlobs = (url: string, options: any) => {
+  // Simulate none of the blobs existing currently
+  return {
+    status: 404
+  }
+}
+
+const headMockAllExistingBlobs = (url: string, options: any) => {
+  // Simulate all of the blobs existing currently
+  return {
+    status: 200
+  }
+}
+
+let count = 0
+const headMockSomeExistingBlobs = (url: string, options: any) => {
+  count++
+  // report one as existing
+  if (count === 1) {
+    return {
+      status: 200
+    }
+  } else {
+    // report all others are missing
+    return {
+      status: 404
+    }
+  }
+}
+
+const headMockFailure = (url: string, options: any) => {
+  return {
+    status: 503
+  }
+}
+
+const postMockSuccessfulIniationForAllBlobs = (url: string, options: any) => {
+  // Simulate successful initiation of uploads for all blobs & return location
+  return {
+    status: 202,
+    headers: {
+      get: (header: string) => {
+        if (header === 'location') {
+          return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
+        }
+      }
+    }
+  }
+}
+
+const postMockFailure = (url: string, options: any) => {
+  // Simulate failed initiation of uploads
+  return {
+    status: 503
+  }
+}
+
+const postMockNoLocationHeader = (url: string, options: any) => {
+  return {
+    status: 202,
+    headers: {
+      get: () => {}
+    }
+  }
+}
+
+const putMockSuccessfulBlobUpload = (url: string, options: any) => {
+  // Simulate successful upload of all blobs & then the manifest
+  if ((url as string).includes('manifest')) {
+    return {
+      status: 201,
+      headers: {
+        get: (header: string) => {
+          if (header === 'docker-content-digest') {
+            return '1234567678'
+          }
+        }
+      }
+    }
+  }
+  return {
+    status: 201
+  }
+}
+
+const putMockFailure = (url: string, options: any) => {
+  // Simulate fails upload of all blobs & manifest
+  return {
+    status: 500
+  }
+}
+
+const putMockFailureManifestUpload = (url: string, options: any) => {
+  // Simulate unsuccessful upload of all blobs & then the manifest
+  if (url.includes('manifest')) {
+    return {
+      status: 500
+    };
+  }
+  return {
+    status: 201
+  };
+}
+
+function configureFetchMock(fetchMock: jest.SpyInstance, methodHandlers: any) {
+  fetchMock.mockImplementation(async (url: string, options: any) => {
+  validateRequestConfig(url, options)
+    switch (options.method) {
+      case 'GET':
+        return methodHandlers.getMock(url, options)
+      case 'HEAD':
+        return methodHandlers.headMock(url, options)
+      case 'POST':
+        return methodHandlers.postMock(url, options)
+      case 'PUT':
+        return methodHandlers.putMock(url, options)
+    }
+  });
+}
+
 const testManifest: ociContainer.Manifest = {
   schemaVersion: 2,
   mediaType: 'application/vnd.oci.image.manifest.v1+json',
@@ -82,46 +202,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('publishes layer blobs & then a manifest to the provided registry', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        validateRequestConfig(url, options)
-        // Simulate none of the blobs existing currently
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate successful upload of all blobs & then the manifest
-        validateRequestConfig(url, options)
-        if ((url as string).includes('manifest')) {
-          return Promise.resolve({
-            status: 201,
-            headers: {
-              get: (header: string) => {
-                if (header === 'docker-content-digest') {
-                  return '1234567678'
-                }
-              }
-            }
-          })
-        }
-        return Promise.resolve({
-          status: 201
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -151,47 +232,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('skips uploading all layer blobs when they all already exist', async () => {
-    // Simulate all blobs already existing
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        // Simulate none of the blobs existing currently
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 200
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate successful upload of all blobs & then the manifest
-        validateRequestConfig(url, options)
-        if ((url as string).includes('manifest')) {
-          return Promise.resolve({
-            status: 201,
-            headers: {
-              get: (header: string) => {
-                if (header === 'docker-content-digest') {
-                  return '1234567678'
-                }
-              }
-            }
-          })
-        }
-        return Promise.resolve({
-          status: 201
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockAllExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -222,55 +263,8 @@ describe('publishOCIArtifact', () => {
   })
 
   it('skips uploading layer blobs that already exist', async () => {
-    // Simulate some blobs already existing
-    let count = 0
-    fetchMock.mockImplementation(async (url, options) => {
-      count++
-      if (options.method === 'HEAD') {
-        validateRequestConfig(url, options)
-        if (count === 1) {
-          return Promise.resolve({
-            status: 200
-          })
-        } else {
-          // report all others are missing
-          return Promise.resolve({
-            status: 404
-          })
-        }
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate successful upload of all blobs & then the manifest
-        validateRequestConfig(url, options)
-        if ((url as string).includes('manifest')) {
-          return Promise.resolve({
-            status: 201,
-            headers: {
-              get: (header: string) => {
-                if (header === 'docker-content-digest') {
-                  return '1234567678'
-                }
-              }
-            }
-          })
-        }
-        return Promise.resolve({
-          status: 201
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockSomeExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
+    count = 0;
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -301,15 +295,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if checking for existing blobs fails', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        validateRequestConfig(url, options)
-        // Simulate failed response code
-        return Promise.resolve({
-          status: 503
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockFailure })
 
     await expect(
       publishOCIArtifact(
@@ -325,20 +311,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if initiating layer upload fails', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        // Simulate none of the blobs existing currently
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate failed initiation of uploads
-        return Promise.resolve({
-          status: 503
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockFailure })
 
     await expect(
       publishOCIArtifact(
@@ -354,23 +327,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if the upload endpoint does not return a location', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      validateRequestConfig(url, options)
-      if (options.method === 'HEAD') {
-        // Simulate none of the blobs existing currently
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful response code but no location header
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: () => {}
-          }
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockNoLocationHeader })
 
     await expect(
       publishOCIArtifact(
@@ -386,34 +343,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a layer upload fails', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        validateRequestConfig(url, options)
-        // Simulate none of the blobs existing currently
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate fails upload of all blobs & manifest
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 500
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockFailure })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -434,39 +364,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a manifest upload fails', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        // Simulate none of the blobs existing currently
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate unsuccessful upload of all blobs & then the manifest
-        validateRequestConfig(url, options)
-        if (url.includes('manifest')) {
-          return Promise.resolve({
-            status: 500
-          })
-        }
-        return Promise.resolve({
-          status: 201
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockFailureManifestUpload })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -487,34 +385,7 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if reading one of the files fails', async () => {
-    fetchMock.mockImplementation(async (url, options) => {
-      if (options.method === 'HEAD') {
-        // Simulate none of the blobs existing currently
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 404
-        })
-      } else if (options.method === 'POST') {
-        // Simulate successful initiation of uploads for all blobs & return location
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 202,
-          headers: {
-            get: (header: string) => {
-              if (header === 'location') {
-                return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-              }
-            }
-          }
-        })
-      } else if (options.method === 'PUT') {
-        // Simulate successful upload of all blobs & then the manifest
-        validateRequestConfig(url, options)
-        return Promise.resolve({
-          status: 201
-        })
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
