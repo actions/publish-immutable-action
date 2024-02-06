@@ -74,8 +74,7 @@ export async function run(): Promise<void> {
       semanticVersion.raw,
       archives.zipFile,
       archives.tarFile,
-      manifest,
-      true
+      manifest
     )
 
     core.setOutput('package-url', packageURL.toString())

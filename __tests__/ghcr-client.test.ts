@@ -1,13 +1,10 @@
 import { publishOCIArtifact } from '../src/ghcr-client'
-import axios from 'axios'
 import * as fsHelper from '../src/fs-helper'
 import * as ociContainer from '../src/oci-container'
 
 // Mocks
 let fsReadFileSyncMock: jest.SpyInstance
-let axiosPostMock: jest.SpyInstance
-let axiosPutMock: jest.SpyInstance
-let axiosHeadMock: jest.SpyInstance
+let fetchMock: jest.SpyInstance
 
 const token = 'test-token'
 const registry = new URL('https://ghcr.io')
@@ -23,6 +20,138 @@ const tarFile: fsHelper.FileMetadata = {
   path: `test-repo-${semver}.tar.gz`,
   size: 456,
   sha256: genericSha
+}
+
+const headMockNoExistingBlobs = (): object => {
+  // Simulate none of the blobs existing currently
+  return {
+    status: 404
+  }
+}
+
+const headMockAllExistingBlobs = (): object => {
+  // Simulate all of the blobs existing currently
+  return {
+    status: 200
+  }
+}
+
+let count = 0
+const headMockSomeExistingBlobs = (): object => {
+  count++
+  // report one as existing
+  if (count === 1) {
+    return {
+      status: 200
+    }
+  } else {
+    // report all others are missing
+    return {
+      status: 404
+    }
+  }
+}
+
+const headMockFailure = (): object => {
+  return {
+    status: 503
+  }
+}
+
+const postMockSuccessfulIniationForAllBlobs = (): object => {
+  // Simulate successful initiation of uploads for all blobs & return location
+  return {
+    status: 202,
+    headers: {
+      get: (header: string) => {
+        if (header === 'location') {
+          return `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
+        }
+      }
+    }
+  }
+}
+
+const postMockFailure = (): object => {
+  // Simulate failed initiation of uploads
+  return {
+    status: 503
+  }
+}
+
+const postMockNoLocationHeader = (): object => {
+  return {
+    status: 202,
+    headers: {
+      get: () => {}
+    }
+  }
+}
+
+const putMockSuccessfulBlobUpload = (url: string): object => {
+  // Simulate successful upload of all blobs & then the manifest
+  if (url.includes('manifest')) {
+    return {
+      status: 201,
+      headers: {
+        get: (header: string) => {
+          if (header === 'docker-content-digest') {
+            return '1234567678'
+          }
+        }
+      }
+    }
+  }
+  return {
+    status: 201
+  }
+}
+
+const putMockFailure = (): object => {
+  // Simulate fails upload of all blobs & manifest
+  return {
+    status: 500
+  }
+}
+
+const putMockFailureManifestUpload = (url: string): object => {
+  // Simulate unsuccessful upload of all blobs & then the manifest
+  if (url.includes('manifest')) {
+    return {
+      status: 500
+    }
+  }
+  return {
+    status: 201
+  }
+}
+
+type MethodHandlers = {
+  getMock?: (url: string, options: { method: string }) => object
+  headMock?: (url: string, options: { method: string }) => object
+  postMock?: (url: string, options: { method: string }) => object
+  putMock?: (url: string, options: { method: string }) => object
+}
+
+function configureFetchMock(
+  fetchMockInstance: jest.SpyInstance,
+  methodHandlers: MethodHandlers
+): void {
+  fetchMockInstance.mockImplementation(
+    async (url: string, options: { method: string }) => {
+      validateRequestConfig(url, options)
+      switch (options.method) {
+        case 'GET':
+          return methodHandlers.getMock?.(url, options)
+        case 'HEAD':
+          return methodHandlers.headMock?.(url, options)
+        case 'POST':
+          return methodHandlers.postMock?.(url, options)
+        case 'PUT':
+          return methodHandlers.putMock?.(url, options)
+      }
+    }
+  )
 }
 
 const testManifest: ociContainer.Manifest = {
@@ -81,50 +210,19 @@ describe('publishOCIArtifact', () => {
       .spyOn(fsHelper, 'readFileContents')
       .mockImplementation()
 
-    axiosPostMock = jest.spyOn(axios, 'post').mockImplementation()
-    axiosPutMock = jest.spyOn(axios, 'put').mockImplementation()
-    axiosHeadMock = jest.spyOn(axios, 'head').mockImplementation()
+    fetchMock = jest.spyOn(global, 'fetch').mockImplementation()
   })
 
   it('publishes layer blobs & then a manifest to the provided registry', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
     })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
-    })
-
-    // Simulate successful upload of all blobs & then the manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(201, url, config)
-
-      if ((url as string).includes('manifest')) {
-        return {
-          status: 201,
-          headers: { 'docker-content-digest': '1234567678' }
-        }
-      }
-
-      return {
-        status: 201
-      }
     })
 
     await publishOCIArtifact(
@@ -137,50 +235,28 @@ describe('publishOCIArtifact', () => {
       testManifest
     )
 
-    expect(axiosHeadMock).toHaveBeenCalledTimes(3)
-    expect(axiosPostMock).toHaveBeenCalledTimes(3)
-    expect(axiosPutMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(10)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'HEAD')
+    ).toHaveLength(3)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'POST')
+    ).toHaveLength(3)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'PUT')
+    ).toHaveLength(4)
   })
 
   it('skips uploading all layer blobs when they all already exist', async () => {
-    // Simulate all blobs already existing
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(200, url, config)
-      return {
-        status: 200
-      }
-    })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockAllExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
     })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
-    })
-
-    // Simulate successful upload of all blobs & then the manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(201, url, config)
-
-      if ((url as string).includes('manifest')) {
-        return {
-          status: 201,
-          headers: { 'docker-content-digest': '1234567678' }
-        }
-      }
-
-      return {
-        status: 201
-      }
     })
 
     await publishOCIArtifact(
@@ -194,62 +270,29 @@ describe('publishOCIArtifact', () => {
     )
 
     // We should only head all the blobs and then upload the manifest
-    expect(axiosHeadMock).toHaveBeenCalledTimes(3)
-    expect(axiosPostMock).toHaveBeenCalledTimes(0)
-    expect(axiosPutMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'HEAD')
+    ).toHaveLength(3)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'POST')
+    ).toHaveLength(0)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'PUT')
+    ).toHaveLength(1)
   })
 
   it('skips uploading layer blobs that already exist', async () => {
-    // Simulate some blobs already existing
-
-    let count = 0
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      count++
-      if (count === 1) {
-        // report the first blob as being there
-        validateRequestConfig(200, url, config)
-        return {
-          status: 200
-        }
-      } else {
-        // report all others are missing
-        validateRequestConfig(404, url, config)
-        return {
-          status: 404
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockSomeExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
     })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
-    })
+    count = 0
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
-    })
-
-    // Simulate successful upload of all blobs & then the manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(201, url, config)
-
-      if ((url as string).includes('manifest')) {
-        return {
-          status: 201,
-          headers: { 'docker-content-digest': '1234567678' }
-        }
-      }
-
-      return {
-        status: 201
-      }
     })
 
     await publishOCIArtifact(
@@ -262,20 +305,21 @@ describe('publishOCIArtifact', () => {
       testManifest
     )
 
+    expect(fetchMock).toHaveBeenCalledTimes(8)
     // We should only head all the blobs and then upload the missing blobs and manifest
-    expect(axiosHeadMock).toHaveBeenCalledTimes(3)
-    expect(axiosPostMock).toHaveBeenCalledTimes(2)
-    expect(axiosPutMock).toHaveBeenCalledTimes(3)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'HEAD')
+    ).toHaveLength(3)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'POST')
+    ).toHaveLength(2)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'PUT')
+    ).toHaveLength(3)
   })
 
   it('throws an error if checking for existing blobs fails', async () => {
-    // Simulate failed response code
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(503, url, config)
-      return {
-        status: 503
-      }
-    })
+    configureFetchMock(fetchMock, { headMock: headMockFailure })
 
     await expect(
       publishOCIArtifact(
@@ -291,20 +335,9 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if initiating layer upload fails', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate failed initiation of uploads
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(503, url, config)
-      return {
-        status: 503
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockFailure
     })
 
     await expect(
@@ -321,21 +354,9 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if the upload endpoint does not return a location', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate successful response code but no location header
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {}
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockNoLocationHeader
     })
 
     await expect(
@@ -352,36 +373,15 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a layer upload fails', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockFailure
     })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
-    })
-
-    // Simulate fails upload of all blobs & manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(500, url, config)
-      return {
-        status: 500
-      }
     })
 
     await expect(
@@ -398,43 +398,15 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a manifest upload fails', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockFailureManifestUpload
     })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       return Buffer.from('test')
-    })
-
-    // Simulate successful upload of all blobs & then the manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      if (url.includes('manifest')) {
-        validateRequestConfig(500, url, config)
-        return {
-          status: 500
-        }
-      }
-
-      validateRequestConfig(201, url, config)
-      return {
-        status: 201
-      }
     })
 
     await expect(
@@ -451,36 +423,15 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if reading one of the files fails', async () => {
-    // Simulate none of the blobs existing currently
-    axiosHeadMock.mockImplementation(async (url, config) => {
-      validateRequestConfig(404, url, config)
-      return {
-        status: 404
-      }
-    })
-
-    // Simulate successful initiation of uploads for all blobs & return location
-    axiosPostMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(202, url, config)
-      return {
-        status: 202,
-        headers: {
-          location: `https://ghcr.io/v2/${repository}/blobs/uploads/${genericSha}`
-        }
-      }
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
     })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
       throw new Error('failed to read a file: test')
-    })
-
-    // Simulate successful upload of all blobs & then the manifest
-    axiosPutMock.mockImplementation(async (url, data, config) => {
-      validateRequestConfig(201, url, config)
-      return {
-        status: 201
-      }
     })
 
     await expect(
@@ -520,10 +471,10 @@ describe('publishOCIArtifact', () => {
   })
 })
 
-// We expect all axios calls to have auth headers set and to not intercept any status codes so we can handle them.
-// This function verifies that given an axios request config.
+// We expect all fetch calls to have auth headers set
+// This function verifies that given an request config.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function validateRequestConfig(status: number, url: string, config: any): void {
+function validateRequestConfig(url: string, config: any): void {
   // Basic URL checks
   expect(url).toBeDefined()
   if (!url.startsWith(registry.toString())) {
@@ -535,12 +486,6 @@ function validateRequestConfig(status: number, url: string, config: any): void {
 
   // Config checks
   expect(config).toBeDefined()
-
-  expect(config.validateStatus).toBeDefined()
-  if (config.validateStatus) {
-    // Check axios will not intercept this status
-    expect(config.validateStatus(status)).toBe(true)
-  }
 
   expect(config.headers).toBeDefined()
   if (config.headers) {
