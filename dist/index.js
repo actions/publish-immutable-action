@@ -74603,6 +74603,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
     }
     const pathname = `${locationResponseHeader}?digest=${layer.digest}`;
     const uploadBlobUrl = new URL(pathname, registryURL).toString();
+    core.error(`upload blob url: ${uploadBlobUrl}`);
     // PUSH EVERYTHING TWICE!!! - NOPE Just once...
     for (let i = 0; i < 1; i++) {
         core.info(`Doing it ${i}.`);
