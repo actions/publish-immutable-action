@@ -22,14 +22,14 @@ const tarFile: fsHelper.FileMetadata = {
   sha256: genericSha
 }
 
-const headMockNoExistingBlobs = (url: string, options: any) => {
+const headMockNoExistingBlobs = (): object => {
   // Simulate none of the blobs existing currently
   return {
     status: 404
   }
 }
 
-const headMockAllExistingBlobs = (url: string, options: any) => {
+const headMockAllExistingBlobs = (): object => {
   // Simulate all of the blobs existing currently
   return {
     status: 200
@@ -37,7 +37,7 @@ const headMockAllExistingBlobs = (url: string, options: any) => {
 }
 
 let count = 0
-const headMockSomeExistingBlobs = (url: string, options: any) => {
+const headMockSomeExistingBlobs = (): object => {
   count++
   // report one as existing
   if (count === 1) {
@@ -52,13 +52,13 @@ const headMockSomeExistingBlobs = (url: string, options: any) => {
   }
 }
 
-const headMockFailure = (url: string, options: any) => {
+const headMockFailure = (): object => {
   return {
     status: 503
   }
 }
 
-const postMockSuccessfulIniationForAllBlobs = (url: string, options: any) => {
+const postMockSuccessfulIniationForAllBlobs = (): object => {
   // Simulate successful initiation of uploads for all blobs & return location
   return {
     status: 202,
@@ -72,14 +72,14 @@ const postMockSuccessfulIniationForAllBlobs = (url: string, options: any) => {
   }
 }
 
-const postMockFailure = (url: string, options: any) => {
+const postMockFailure = (): object => {
   // Simulate failed initiation of uploads
   return {
     status: 503
   }
 }
 
-const postMockNoLocationHeader = (url: string, options: any) => {
+const postMockNoLocationHeader = (): object => {
   return {
     status: 202,
     headers: {
@@ -88,9 +88,9 @@ const postMockNoLocationHeader = (url: string, options: any) => {
   }
 }
 
-const putMockSuccessfulBlobUpload = (url: string, options: any) => {
+const putMockSuccessfulBlobUpload = (url: string): object => {
   // Simulate successful upload of all blobs & then the manifest
-  if ((url as string).includes('manifest')) {
+  if (url.includes('manifest')) {
     return {
       status: 201,
       headers: {
@@ -107,39 +107,51 @@ const putMockSuccessfulBlobUpload = (url: string, options: any) => {
   }
 }
 
-const putMockFailure = (url: string, options: any) => {
+const putMockFailure = (): object => {
   // Simulate fails upload of all blobs & manifest
   return {
     status: 500
   }
 }
 
-const putMockFailureManifestUpload = (url: string, options: any) => {
+const putMockFailureManifestUpload = (url: string): object => {
   // Simulate unsuccessful upload of all blobs & then the manifest
   if (url.includes('manifest')) {
     return {
       status: 500
-    };
+    }
   }
   return {
     status: 201
-  };
+  }
 }
 
-function configureFetchMock(fetchMock: jest.SpyInstance, methodHandlers: any) {
-  fetchMock.mockImplementation(async (url: string, options: any) => {
-  validateRequestConfig(url, options)
-    switch (options.method) {
-      case 'GET':
-        return methodHandlers.getMock(url, options)
-      case 'HEAD':
-        return methodHandlers.headMock(url, options)
-      case 'POST':
-        return methodHandlers.postMock(url, options)
-      case 'PUT':
-        return methodHandlers.putMock(url, options)
+type MethodHandlers = {
+  getMock?: (url: string, options: { method: string }) => object
+  headMock?: (url: string, options: { method: string }) => object
+  postMock?: (url: string, options: { method: string }) => object
+  putMock?: (url: string, options: { method: string }) => object
+}
+
+function configureFetchMock(
+  fetchMockInstance: jest.SpyInstance,
+  methodHandlers: MethodHandlers
+): void {
+  fetchMockInstance.mockImplementation(
+    async (url: string, options: { method: string }) => {
+      validateRequestConfig(url, options)
+      switch (options.method) {
+        case 'GET':
+          return methodHandlers.getMock?.(url, options)
+        case 'HEAD':
+          return methodHandlers.headMock?.(url, options)
+        case 'POST':
+          return methodHandlers.postMock?.(url, options)
+        case 'PUT':
+          return methodHandlers.putMock?.(url, options)
+      }
     }
-  });
+  )
 }
 
 const testManifest: ociContainer.Manifest = {
@@ -202,7 +214,11 @@ describe('publishOCIArtifact', () => {
   })
 
   it('publishes layer blobs & then a manifest to the provided registry', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
+    })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -232,7 +248,11 @@ describe('publishOCIArtifact', () => {
   })
 
   it('skips uploading all layer blobs when they all already exist', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockAllExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
+    configureFetchMock(fetchMock, {
+      headMock: headMockAllExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
+    })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -263,8 +283,12 @@ describe('publishOCIArtifact', () => {
   })
 
   it('skips uploading layer blobs that already exist', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockSomeExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
-    count = 0;
+    configureFetchMock(fetchMock, {
+      headMock: headMockSomeExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
+    })
+    count = 0
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -311,7 +335,10 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if initiating layer upload fails', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockFailure })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockFailure
+    })
 
     await expect(
       publishOCIArtifact(
@@ -327,7 +354,10 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if the upload endpoint does not return a location', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockNoLocationHeader })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockNoLocationHeader
+    })
 
     await expect(
       publishOCIArtifact(
@@ -343,7 +373,11 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a layer upload fails', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockFailure })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockFailure
+    })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -364,7 +398,11 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if a manifest upload fails', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockFailureManifestUpload })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockFailureManifestUpload
+    })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
@@ -385,7 +423,11 @@ describe('publishOCIArtifact', () => {
   })
 
   it('throws an error if reading one of the files fails', async () => {
-    configureFetchMock(fetchMock, { headMock: headMockNoExistingBlobs, postMock: postMockSuccessfulIniationForAllBlobs, putMock: putMockSuccessfulBlobUpload })
+    configureFetchMock(fetchMock, {
+      headMock: headMockNoExistingBlobs,
+      postMock: postMockSuccessfulIniationForAllBlobs,
+      putMock: putMockSuccessfulBlobUpload
+    })
 
     // Simulate successful reading of all the files
     fsReadFileSyncMock.mockImplementation(() => {
