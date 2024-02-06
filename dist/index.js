@@ -74703,6 +74703,11 @@ const semver_1 = __importDefault(__nccwpck_require__(11383));
  */
 async function run() {
     try {
+        const workspace = process.env.GITHUB_WORKSPACE || '';
+        if (workspace === '') {
+            core.setFailed(`Could not find GITHUB_WORKSPACE.`);
+            return;
+        }
         const repository = process.env.GITHUB_REPOSITORY || '';
         if (repository === '') {
             core.setFailed(`Could not find Repository.`);
@@ -74721,7 +74726,7 @@ async function run() {
         const semanticVersion = parseSourceSemanticVersion();
         // Create a temporary directory to stage files for packaging in archives
         const stagedActionFilesDir = fsHelper.createTempDir('staging');
-        fsHelper.stageActionFiles('.', stagedActionFilesDir);
+        fsHelper.stageActionFiles(workspace, stagedActionFilesDir);
         // Create a temporary directory to store the archives
         const archiveDir = fsHelper.createTempDir('archive');
         const archives = await fsHelper.createArchives(stagedActionFilesDir, archiveDir);

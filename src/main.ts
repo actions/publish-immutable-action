@@ -12,6 +12,12 @@ import semver from 'semver'
  */
 export async function run(): Promise<void> {
   try {
+    const workspace: string = process.env.GITHUB_WORKSPACE || ''
+    if (workspace === '') {
+      core.setFailed(`Could not find GITHUB_WORKSPACE.`)
+      return
+    }
+
     const repository: string = process.env.GITHUB_REPOSITORY || ''
     if (repository === '') {
       core.setFailed(`Could not find Repository.`)
@@ -33,7 +39,7 @@ export async function run(): Promise<void> {
 
     // Create a temporary directory to stage files for packaging in archives
     const stagedActionFilesDir = fsHelper.createTempDir('staging')
-    fsHelper.stageActionFiles('.', stagedActionFilesDir)
+    fsHelper.stageActionFiles(workspace, stagedActionFilesDir)
 
     // Create a temporary directory to store the archives
     const archiveDir = fsHelper.createTempDir('archive')
