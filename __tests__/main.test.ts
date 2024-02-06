@@ -64,8 +64,22 @@ describe('run', () => {
       .mockImplementation()
   })
 
+  it('fails if no action workspace found', async () => {
+    // Mock the environment
+    process.env.GITHUB_WORKSPACE = ''
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith(
+      'Could not find GITHUB_WORKSPACE.'
+    )
+  })
+
   it('fails if no repository found', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = ''
 
     // Run the action
@@ -77,6 +91,7 @@ describe('run', () => {
 
   it('fails if no token found', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.TOKEN = ''
 
@@ -89,6 +104,7 @@ describe('run', () => {
 
   it('fails if no source commit found', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.TOKEN = 'test'
     process.env.GITHUB_SHA = ''
@@ -101,6 +117,7 @@ describe('run', () => {
   })
 
   it('fails if trigger is not release or tag push', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.GITHUB_SHA = 'test-sha'
     process.env.TOKEN = 'token'
@@ -117,6 +134,7 @@ describe('run', () => {
   })
 
   it('fails if the trigger is a push, but not a tag push', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.GITHUB_SHA = 'test-sha'
     process.env.TOKEN = 'token'
@@ -131,6 +149,7 @@ describe('run', () => {
   })
 
   it('fails if the value of the tag input is not a valid semver', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     process.env.GITHUB_SHA = 'test-sha'
     process.env.TOKEN = 'token'
@@ -155,6 +174,7 @@ describe('run', () => {
 
   it('fails if staging files fails', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'
@@ -179,6 +199,7 @@ describe('run', () => {
 
   it('fails if creating temp directory fails', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'
@@ -203,6 +224,7 @@ describe('run', () => {
 
   it('fails if creating archives fails', async () => {
     // Mock the environment
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'
@@ -226,6 +248,7 @@ describe('run', () => {
   })
 
   it('fails if getting container registry URL fails', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'
@@ -268,6 +291,7 @@ describe('run', () => {
   })
 
   it('fails if publishing OCI artifact fails', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'
@@ -314,6 +338,7 @@ describe('run', () => {
   })
 
   it('uploads the artifact, returns package metadata from GHCR, and cleans up tmp dirs', async () => {
+    process.env.GITHUB_WORKSPACE = '.'
     process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
     github.context.eventName = 'release'
     process.env.GITHUB_SHA = 'test-sha'

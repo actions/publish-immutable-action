@@ -29,6 +29,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REF: ${{ github.ref }}
         GITHUB_SHA: ${{ github.sha }}
+        GITHUB_WORKSPACE: ${{ github.workspace }}
     - name: Output variables
       shell: bash
       run: |
