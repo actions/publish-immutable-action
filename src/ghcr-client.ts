@@ -39,47 +39,52 @@ export async function publishOCIArtifact(
     `Creating GHCR package for release with semver:${semver} with path:"${zipFile.path}" and "${tarFile.path}".`
   )
 
-  const layerUploads: Promise<void>[] = manifest.layers.map(async layer => {
-    switch (layer.mediaType) {
-      case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
-        return uploadLayer(
-          layer,
-          tarFile,
-          registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
-          b64Token
-        )
-      case 'application/vnd.github.actions.package.layer.v1.zip':
-        return uploadLayer(
-          layer,
-          zipFile,
-          registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
-          b64Token
-        )
-      case 'application/vnd.github.actions.package.config.v1+json':
-        return uploadLayer(
-          layer,
-          { path: '', size: 0, sha256: layer.digest },
-          registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
-          b64Token
-        )
-      default:
-        throw new Error(`Unknown media type ${layer.mediaType}`)
-    }
-  })
+  let digest = ''
+  // PUSH EVERYTHING TWICE!!!
+  for (let i = 0; i < 2; i++) {
+    core.info(`Doing outer ${i}.`)
+    const layerUploads: Promise<void>[] = manifest.layers.map(async layer => {
+      switch (layer.mediaType) {
+        case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
+          return uploadLayer(
+            layer,
+            tarFile,
+            registry,
+            checkBlobEndpoint,
+            uploadBlobEndpoint,
+            b64Token
+          )
+        case 'application/vnd.github.actions.package.layer.v1.zip':
+          return uploadLayer(
+            layer,
+            zipFile,
+            registry,
+            checkBlobEndpoint,
+            uploadBlobEndpoint,
+            b64Token
+          )
+        case 'application/vnd.github.actions.package.config.v1+json':
+          return uploadLayer(
+            layer,
+            { path: '', size: 0, sha256: layer.digest },
+            registry,
+            checkBlobEndpoint,
+            uploadBlobEndpoint,
+            b64Token
+          )
+        default:
+          throw new Error(`Unknown media type ${layer.mediaType}`)
+      }
+    })
 
-  await Promise.all(layerUploads)
+    await Promise.all(layerUploads)
 
-  const digest = await uploadManifest(
-    JSON.stringify(manifest),
-    manifestEndpoint,
-    b64Token
-  )
+    digest = await uploadManifest(
+      JSON.stringify(manifest),
+      manifestEndpoint,
+      b64Token
+    )
+  }
 
   return {
     packageURL: new URL(`${repository}:${semver}`, registry),
@@ -111,7 +116,9 @@ async function uploadLayer(
     checkExistsResponse.status === 200 ||
     checkExistsResponse.status === 202
   ) {
-    core.info(`Layer ${layer.digest} already exists. Skipping upload.`)
+    core.info(
+      `Layer ${layer.digest} already exists. Skipping upload. - HA I lied... I'm going to push anyway`
+    )
     return
   }
 
@@ -151,8 +158,8 @@ async function uploadLayer(
   const pathname = `${locationResponseHeader}?digest=${layer.digest}`
   const uploadBlobUrl = new URL(pathname, registryURL).toString()
 
-  // PUSH EVERYTHING TWICE!!!
-  for (let i = 0; i < 2; i++) {
+  // PUSH EVERYTHING TWICE!!! - NOPE Just once...
+  for (let i = 0; i < 1; i++) {
     core.info(`Doing it ${i}.`)
     // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
     let data: Buffer
@@ -191,8 +198,8 @@ async function uploadManifest(
   core.info(`Uploading manifest to ${manifestEndpoint}.`)
 
   let result = ''
-  // PUSH EVERYTHING TWICE!!!
-  for (let i = 0; i < 2; i++) {
+  // PUSH EVERYTHING TWICE!!!  - NOPE Just once...
+  for (let i = 0; i < 1; i++) {
     core.info(`Doing it ${i}.`)
     const putResponse = await axios.put(manifestEndpoint, manifestJSON, {
       headers: {
