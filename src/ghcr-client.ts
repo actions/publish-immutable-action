@@ -3,8 +3,6 @@ import { FileMetadata } from './fs-helper'
 import * as ociContainer from './oci-container'
 import * as fsHelper from './fs-helper'
 
-let showDebugLog = false
-
 // Publish the OCI artifact and return the URL where it can be downloaded
 export async function publishOCIArtifact(
   token: string,
@@ -13,13 +11,8 @@ export async function publishOCIArtifact(
   semver: string,
   zipFile: FileMetadata,
   tarFile: FileMetadata,
-  manifest: ociContainer.Manifest,
-  debugRequests = false
+  manifest: ociContainer.Manifest
 ): Promise<{ packageURL: URL; manifestDigest: string }> {
-  if (debugRequests) {
-    showDebugLog = true
-  }
-
   const b64Token = Buffer.from(token).toString('base64')
 
   const checkBlobEndpoint = new URL(
@@ -211,17 +204,18 @@ const fetchWithDebug = async (
   url: string,
   config: RequestInit = {}
 ): Promise<Response> => {
-  if (showDebugLog) {
-    core.debug(`Request with ${JSON.stringify(config)}`)
+  const debugLogs = core.isDebug()
+  if (debugLogs) {
+    core.debug(`Request from ${url} with config: ${JSON.stringify(config)}`)
   }
   try {
     const response = await fetch(url, config)
-    if (showDebugLog) {
+    if (debugLogs) {
       core.debug(`Response with ${JSON.stringify(response)}`)
     }
     return response
   } catch (error) {
-    if (showDebugLog) {
+    if (debugLogs) {
       core.debug(`Error with ${error}`)
     }
     throw error

@@ -70986,12 +70986,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.publishOCIArtifact = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fsHelper = __importStar(__nccwpck_require__(6642));
-let showDebugLog = false;
 // Publish the OCI artifact and return the URL where it can be downloaded
-async function publishOCIArtifact(token, registry, repository, semver, zipFile, tarFile, manifest, debugRequests = false) {
-    if (debugRequests) {
-        showDebugLog = true;
-    }
+async function publishOCIArtifact(token, registry, repository, semver, zipFile, tarFile, manifest) {
     const b64Token = Buffer.from(token).toString('base64');
     const checkBlobEndpoint = new URL(`v2/${repository}/blobs/`, registry).toString();
     const uploadBlobEndpoint = new URL(`v2/${repository}/blobs/uploads/`, registry).toString();
@@ -71093,18 +71089,19 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
     return digestResponseHeader;
 }
 const fetchWithDebug = async (url, config = {}) => {
-    if (showDebugLog) {
-        core.debug(`Request with ${JSON.stringify(config)}`);
+    const debugLogs = core.isDebug();
+    if (debugLogs) {
+        core.debug(`Request from ${url} with config: ${JSON.stringify(config)}`);
     }
     try {
         const response = await fetch(url, config);
-        if (showDebugLog) {
+        if (debugLogs) {
             core.debug(`Response with ${JSON.stringify(response)}`);
         }
         return response;
     }
     catch (error) {
-        if (showDebugLog) {
+        if (debugLogs) {
             core.debug(`Error with ${error}`);
         }
         throw error;
@@ -71191,7 +71188,7 @@ async function run() {
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, repository, repoId, ownerId, sourceCommit, semanticVersion.raw, new Date());
         const containerRegistryURL = await api.getContainerRegistryURL();
         console.log(`Container registry URL: ${containerRegistryURL}`);
-        const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(token, containerRegistryURL, repository, semanticVersion.raw, archives.zipFile, archives.tarFile, manifest, true);
+        const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(token, containerRegistryURL, repository, semanticVersion.raw, archives.zipFile, archives.tarFile, manifest);
         core.setOutput('package-url', packageURL.toString());
         core.setOutput('package-manifest', JSON.stringify(manifest));
         core.setOutput('package-manifest-sha', manifestDigest);
