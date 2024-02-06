@@ -33,7 +33,6 @@ runs:
     - name: Output variables
       shell: bash
       run: |
-        echo "package manifest: ${{steps.publish.outputs.package-manifest}}"
         echo "package manifest sha: ${{steps.publish.outputs.package-manifest-sha}}"
         echo "package url: ${{steps.publish.outputs.package-url}}"
         echo "subject name: ${{github.repository}}_${{github.ref}}"
