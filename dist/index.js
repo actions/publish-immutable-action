@@ -74596,8 +74596,8 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
     }
     const pathname = `${locationResponseHeader}?digest=${layer.digest}`;
     const uploadBlobUrl = new URL(pathname, registryURL).toString();
-    // PUSH EVERYTHING TWICE!!!
-    for (let i = 0; i < 2; i++) {
+    // PUSH EVERYTHING TWICE!!! -- NOPE only once for now
+    for (let i = 0; i < 1; i++) {
         core.info(`Doing it ${i}.`);
         // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
         let data;
