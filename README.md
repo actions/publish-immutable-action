@@ -15,14 +15,6 @@ on:
   release:
 
 - uses: immutable-actions/publish-action-package@v1
-  with:
-    # Relative path of the working directory of the repository to be tar archived
-    # and uploaded as OCI Artifact layer. You can mention multiple files/folders
-    # by mentioning relative paths as space separated values.
-    #
-    # This defaults to the entire action repository contents if not explicitly defined.
-    # Default: '.'
-    path: 'src/ action.yml dist/'
 ```
 <!-- end usage -->
 
