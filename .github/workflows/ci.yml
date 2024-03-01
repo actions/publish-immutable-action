@@ -27,6 +27,11 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
+      - name: setup github npm authentication
+        run: echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
+        env:
+          NPM_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
       - name: Install Dependencies
         id: npm-ci
         run: npm ci
@@ -42,4 +47,4 @@ jobs:
       - name: Test
         id: npm-ci-test
         run: npm run ci-test
-        
+
