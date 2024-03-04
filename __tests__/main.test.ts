@@ -7,28 +7,28 @@
  */
 
 import * as core from '@actions/core'
+import * as attest from '@actions/attest'
 import * as main from '../src/main'
-import * as github from '@actions/github'
+import * as iaToolkit from '@immutable-actions/toolkit'
+import * as cfg from '../src/config'
 
-import * as fsHelper from '../src/fs-helper'
-import * as ghcr from '../src/ghcr-client'
-import * as api from '../src/api-client'
+const ghcrUrl = new URL('https://ghcr.io')
 
 // Mock the GitHub Actions core library
 let setFailedMock: jest.SpyInstance
 let setOutputMock: jest.SpyInstance
 
-// Mock the filesystem helper
+// Mock the IA Toolkit
 let createTempDirMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let stageActionFilesMock: jest.SpyInstance
-
-// Mock the GHCR Client
 let publishOCIArtifactMock: jest.SpyInstance
 
-// Mock the API Client
-let getContainerRegistryURLMock: jest.SpyInstance
-let getRepositoryMetadataMock: jest.SpyInstance
+// Mock the config resolution
+let resolvePublishActionOptionsMock: jest.SpyInstance
+
+// Mock generating attestation
+let generateAttestationMock: jest.SpyInstance
 
 describe('run', () => {
   beforeEach(() => {
@@ -40,176 +40,60 @@ describe('run', () => {
 
     // FS mocks
     createTempDirMock = jest
-      .spyOn(fsHelper, 'createTempDir')
+      .spyOn(iaToolkit, 'createTempDir')
       .mockImplementation()
     createArchivesMock = jest
-      .spyOn(fsHelper, 'createArchives')
+      .spyOn(iaToolkit, 'createArchives')
       .mockImplementation()
     stageActionFilesMock = jest
-      .spyOn(fsHelper, 'stageActionFiles')
+      .spyOn(iaToolkit, 'stageActionFiles')
       .mockImplementation()
 
     // GHCR Client mocks
     publishOCIArtifactMock = jest
-      .spyOn(ghcr, 'publishOCIArtifact')
+      .spyOn(iaToolkit, 'publishOCIArtifact')
       .mockImplementation()
 
-    // API Client mocks
-    getContainerRegistryURLMock = jest
-      .spyOn(api, 'getContainerRegistryURL')
+    // Config mocks
+    resolvePublishActionOptionsMock = jest
+      .spyOn(cfg, 'resolvePublishActionOptions')
       .mockImplementation()
 
-    getRepositoryMetadataMock = jest
-      .spyOn(api, 'getRepositoryMetadata')
+    // Attestation mocks
+    generateAttestationMock = jest
+      .spyOn(attest, 'attestProvenance')
       .mockImplementation()
   })
 
-  it('fails if no action workspace found', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = ''
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith(
-      'Could not find GITHUB_WORKSPACE.'
-    )
-  })
-
-  it('fails if no repository found', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = ''
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find Repository.')
-  })
-
-  it('fails if no token found', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    process.env.TOKEN = ''
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find GITHUB_TOKEN.')
-  })
-
-  it('fails if no source commit found', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    process.env.TOKEN = 'test'
-    process.env.GITHUB_SHA = ''
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Could not find source commit.')
-  })
-
-  it('fails if trigger is not release or tag push', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-
-    // TODO: If we want we can add all of these: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
-    const invalidEvents = ['workflow_dispatch, pull_request, schedule']
-    for (const event of invalidEvents) {
-      github.context.eventName = event
-      await main.run()
-      expect(setFailedMock).toHaveBeenCalledWith(
-        'This action can only be triggered by release events or tag push events.'
-      )
-    }
-  })
-
-  it('fails if the trigger is a push, but not a tag push', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.eventName = 'push'
-    github.context.ref = 'refs/heads/main' // This is a branch, not a tag
+  it('fails if the action ref is not a tag', async () => {
+    const options = baseOptions()
+    options.ref = 'refs/heads/main' // This is a branch, not a tag
+    resolvePublishActionOptionsMock.mockReturnValueOnce(options)
 
     await main.run()
 
     expect(setFailedMock).toHaveBeenCalledWith(
-      'This action can only be triggered by release events or tag push events.'
+      'The ref refs/heads/main is not a valid tag reference.'
     )
   })
 
-  it('fails if the value of the tag input is not a valid semver', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.eventName = 'release'
-
+  it('fails if the value of the tag ref is not a valid semver', async () => {
     const tags = ['test', 'v1.0', 'chicken', '111111']
 
     for (const tag of tags) {
-      github.context.payload = {
-        release: {
-          id: '123',
-          tag_name: tag
-        }
-      }
+      const options = baseOptions()
+      options.ref = `refs/tags/${tag}`
+      resolvePublishActionOptionsMock.mockReturnValueOnce(options)
 
       await main.run()
       expect(setFailedMock).toHaveBeenCalledWith(
-        `${tag} is not a valid semantic version, and so cannot be uploaded as an Immutable Action.`
+        `${tag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`
       )
     }
   })
 
-  it('fails if staging files fails', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
-      }
-    }
-
-    stageActionFilesMock.mockImplementation(() => {
-      throw new Error('Something went wrong')
-    })
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
-  })
-
-  it('fails if creating temp directory fails', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
-      }
-    }
+  it('fails if creating staging temp directory fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
     createTempDirMock.mockImplementation(() => {
       throw new Error('Something went wrong')
@@ -222,21 +106,14 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('fails if creating archives fails', async () => {
-    // Mock the environment
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
-      }
-    }
+  it('fails if staging files fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
-    createArchivesMock.mockImplementation(() => {
+    createTempDirMock.mockImplementation(() => {
+      return 'tmpDir/staging'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
@@ -247,39 +124,35 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('fails if getting container registry URL fails', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
+  it('fails if creating archives temp directory fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    createTempDirMock.mockImplementation((_, path: string) => {
+      if (path === 'staging') {
+        return 'staging'
       }
-    }
+      throw new Error('Something went wrong')
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
+  })
+
+  it('fails if creating archives fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
 
     createArchivesMock.mockImplementation(() => {
-      return {
-        zipFile: {
-          path: 'test',
-          size: 5,
-          sha256: '123'
-        },
-        tarFile: {
-          path: 'test2',
-          size: 52,
-          sha256: '1234'
-        }
-      }
-    })
-
-    getRepositoryMetadataMock.mockImplementation(() => {
-      return { repoId: 'test', ownerId: 'test' }
-    })
-
-    getContainerRegistryURLMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
@@ -291,17 +164,13 @@ describe('run', () => {
   })
 
   it('fails if publishing OCI artifact fails', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
-      }
-    }
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
 
     createArchivesMock.mockImplementation(() => {
       return {
@@ -316,14 +185,6 @@ describe('run', () => {
           sha256: '1234'
         }
       }
-    })
-
-    getRepositoryMetadataMock.mockImplementation(() => {
-      return { repoId: 'test', ownerId: 'test' }
-    })
-
-    getContainerRegistryURLMock.mockImplementation(() => {
-      return new URL('https://ghcr.io')
     })
 
     publishOCIArtifactMock.mockImplementation(() => {
@@ -337,20 +198,14 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('uploads the artifact, returns package metadata from GHCR, and cleans up tmp dirs', async () => {
-    process.env.GITHUB_WORKSPACE = '.'
-    process.env.GITHUB_REPOSITORY = 'test-org/test-repo'
-    github.context.eventName = 'release'
-    process.env.GITHUB_SHA = 'test-sha'
-    process.env.TOKEN = 'token'
-    github.context.payload = {
-      release: {
-        id: '123',
-        tag_name: 'v1.2.3'
-      }
-    }
+  it('fails if creating attestation fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
-    createTempDirMock.mockImplementation(() => '/tmp/test/subdir')
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
 
     createArchivesMock.mockImplementation(() => {
       return {
@@ -367,12 +222,48 @@ describe('run', () => {
       }
     })
 
-    getRepositoryMetadataMock.mockImplementation(() => {
-      return { repoId: 'test', ownerId: 'test' }
+    publishOCIArtifactMock.mockImplementation(() => {
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        manifestDigest: 'sha256:my-test-digest'
+      }
     })
 
-    getContainerRegistryURLMock.mockImplementation(() => {
-      return new URL('https://ghcr.io')
+    generateAttestationMock.mockImplementation(async () => {
+      throw new Error('Something went wrong')
+    })
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
+  })
+
+  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in enterprise', async () => {
+    const options = baseOptions()
+    options.isEnterprise = true
+    resolvePublishActionOptionsMock.mockReturnValue(options)
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
     })
 
     publishOCIArtifactMock.mockImplementation(() => {
@@ -406,4 +297,97 @@ describe('run', () => {
       'sha256:my-test-digest'
     )
   })
+
+  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in non-enterprise', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    publishOCIArtifactMock.mockImplementation(() => {
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        manifestDigest: 'sha256:my-test-digest'
+      }
+    })
+
+    generateAttestationMock.mockImplementation(async () => {
+      return {
+        attestationID: 'test-attestation-id',
+        certificate: 'test',
+        bundle: {
+          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          verificationMaterial: {
+            publicKey: {
+              hint: 'test-hint'
+            }
+          }
+        }
+      }
+    })
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+
+    // Check outputs
+    expect(setOutputMock).toHaveBeenCalledTimes(4)
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-url',
+      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest',
+      expect.any(String)
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest-sha',
+      'sha256:my-test-digest'
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'attestation-id',
+      'test-attestation-id'
+    )
+  })
 })
+
+function baseOptions(): cfg.PublishActionOptions {
+  return {
+    nameWithOwner: 'nameWithOwner',
+    workspaceDir: 'workspaceDir',
+    event: 'release',
+    apiBaseUrl: 'apiBaseUrl',
+    runnerTempDir: 'runnerTempDir',
+    sha: 'sha',
+    repositoryId: 'repositoryId',
+    repositoryOwnerId: 'repositoryOwnerId',
+    isEnterprise: false,
+    containerRegistryUrl: ghcrUrl,
+    token: 'token',
+    ref: 'refs/tags/v1.2.3'
+  }
+}
