@@ -83,13 +83,12 @@ function parseSemverTagFromRef(ref: string): semver.SemVer {
   }
 
   const rawTag = ref.replace(/^refs\/tags\//, '')
-  const semverTag = semver.parse(rawTag)
+  const semverTag = semver.parse(rawTag.replace(/^v/, ''))
   if (!semverTag) {
     throw new Error(
       `${rawTag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`
     )
   }
-
   return semverTag
 }
 
