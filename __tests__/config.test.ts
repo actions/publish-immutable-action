@@ -230,7 +230,7 @@ function configureEventContext(): void {
   process.env.GITHUB_API_URL = 'apiBaseUrl'
   process.env.RUNNER_TEMP = 'runnerTempDir'
   process.env.GITHUB_SHA = 'sha'
-  process.env.GITHUB_SERVER_URL = 'github.com'
+  process.env.GITHUB_SERVER_URL = 'https://github.com/'
   process.env.GITHUB_REPOSITORY_ID = 'repositoryId'
   process.env.GITHUB_REPOSITORY_OWNER_ID = 'repositoryOwnerId'
   github.context.eventName = 'release'
