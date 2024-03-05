@@ -94,7 +94,7 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     await iaToolkit.getContainerRegistryURL(apiBaseUrl)
 
   const isEnterprise =
-    !githubServerUrl.endsWith('.github.com') &&
+    !githubServerUrl.includes('https://github.com') &&
     !githubServerUrl.endsWith('.ghe.com')
 
   return {
