@@ -1,4 +1,4 @@
-import * as iaToolkit from '@immutable-actions/toolkit'
+import * as apiClient from './api-client'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 
@@ -91,7 +91,7 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
 
   // Required Values fetched from the GitHub API
   const containerRegistryUrl: URL =
-    await iaToolkit.getContainerRegistryURL(apiBaseUrl)
+    await apiClient.getContainerRegistryURL(apiBaseUrl)
 
   const isEnterprise =
     !githubServerUrl.includes('https://github.com') &&

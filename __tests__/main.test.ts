@@ -9,8 +9,9 @@
 import * as core from '@actions/core'
 import * as attest from '@actions/attest'
 import * as main from '../src/main'
-import * as iaToolkit from '@immutable-actions/toolkit'
 import * as cfg from '../src/config'
+import * as fsHelper from '../src/fs-helper'
+import * as ghcr from '../src/ghcr-client'
 
 const ghcrUrl = new URL('https://ghcr.io')
 
@@ -40,18 +41,18 @@ describe('run', () => {
 
     // FS mocks
     createTempDirMock = jest
-      .spyOn(iaToolkit, 'createTempDir')
+      .spyOn(fsHelper, 'createTempDir')
       .mockImplementation()
     createArchivesMock = jest
-      .spyOn(iaToolkit, 'createArchives')
+      .spyOn(fsHelper, 'createArchives')
       .mockImplementation()
     stageActionFilesMock = jest
-      .spyOn(iaToolkit, 'stageActionFiles')
+      .spyOn(fsHelper, 'stageActionFiles')
       .mockImplementation()
 
     // GHCR Client mocks
     publishOCIArtifactMock = jest
-      .spyOn(iaToolkit, 'publishOCIArtifact')
+      .spyOn(ghcr, 'publishOCIArtifact')
       .mockImplementation()
 
     // Config mocks

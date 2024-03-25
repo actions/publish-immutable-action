@@ -1,7 +1,7 @@
-import * as iaToolkit from '@immutable-actions/toolkit'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import * as cfg from '../src/config'
+import * as apiClient from '../src/api-client'
 
 let getContainerRegistryURLMock: jest.SpyInstance
 let getInputMock: jest.SpyInstance
@@ -11,7 +11,7 @@ const ghcrUrl = new URL('https://ghcr.io')
 describe('config.resolvePublishActionOptions', () => {
   beforeEach(() => {
     getContainerRegistryURLMock = jest
-      .spyOn(iaToolkit, 'getContainerRegistryURL')
+      .spyOn(apiClient, 'getContainerRegistryURL')
       .mockImplementation()
 
     getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
