@@ -1,6 +1,8 @@
 import * as core from '@actions/core'
 import semver from 'semver'
-import * as iaToolkit from '@immutable-actions/toolkit'
+import * as fsHelper from './fs-helper'
+import * as ociContainer from './oci-container'
+import * as ghcr from './ghcr-client'
 import * as attest from '@actions/attest'
 import * as cfg from './config'
 
@@ -18,22 +20,19 @@ export async function run(): Promise<void> {
 
     const semverTag: semver.SemVer = parseSemverTagFromRef(options.ref)
 
-    const stagedActionFilesDir = iaToolkit.createTempDir(
+    const stagedActionFilesDir = fsHelper.createTempDir(
       options.runnerTempDir,
       'staging'
     )
-    iaToolkit.stageActionFiles(options.workspaceDir, stagedActionFilesDir)
+    fsHelper.stageActionFiles(options.workspaceDir, stagedActionFilesDir)
 
-    const archiveDir = iaToolkit.createTempDir(
-      options.runnerTempDir,
-      'archives'
-    )
-    const archives = await iaToolkit.createArchives(
+    const archiveDir = fsHelper.createTempDir(options.runnerTempDir, 'archives')
+    const archives = await fsHelper.createArchives(
       stagedActionFilesDir,
       archiveDir
     )
 
-    const manifest = iaToolkit.createActionPackageManifest(
+    const manifest = ociContainer.createActionPackageManifest(
       archives.tarFile,
       archives.zipFile,
       options.nameWithOwner,
@@ -44,7 +43,7 @@ export async function run(): Promise<void> {
       new Date()
     )
 
-    const { packageURL, manifestDigest } = await iaToolkit.publishOCIArtifact(
+    const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(
       options.token,
       options.containerRegistryUrl,
       options.nameWithOwner,
