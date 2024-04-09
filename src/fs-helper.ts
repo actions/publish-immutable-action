@@ -48,7 +48,7 @@ export async function createArchives(
     })
 
     archive.pipe(output)
-    archive.directory(distPath, false)
+    archive.directory(distPath, 'action')
     archive.finalize()
   })
 
@@ -58,7 +58,8 @@ export async function createArchives(
         {
           file: tarPath,
           C: distPath,
-          gzip: true
+          gzip: true,
+          prefix: 'action'
         },
         ['.']
       )
