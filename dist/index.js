@@ -99504,7 +99504,7 @@ async function createArchives(distPath, archiveTargetPath) {
             resolve(fileMetadata(zipPath));
         });
         archive.pipe(output);
-        archive.directory(distPath, false);
+        archive.directory(distPath, 'action');
         archive.finalize();
     });
     const createTarPromise = new Promise((resolve, reject) => {
@@ -99512,7 +99512,8 @@ async function createArchives(distPath, archiveTargetPath) {
             .c({
             file: tarPath,
             C: distPath,
-            gzip: true
+            gzip: true,
+            prefix: 'action'
         }, ['.'])
             // eslint-disable-next-line github/no-then
             .catch(err => {
