@@ -20,6 +20,13 @@ export async function run(): Promise<void> {
 
     const semverTag: semver.SemVer = await parseSemverTagFromRef(options)
 
+    // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
+    await fsHelper.ensureTagAndRefCheckedOut(
+      options.ref,
+      options.sha,
+      options.workspaceDir
+    )
+
     const stagedActionFilesDir = fsHelper.createTempDir(
       options.runnerTempDir,
       'staging'
@@ -93,9 +100,6 @@ async function parseSemverTagFromRef(
       `${rawTag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`
     )
   }
-
-  // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
-  await fsHelper.ensureCorrectShaCheckedOut(ref, opts.sha, opts.workspaceDir)
 
   return semverTag
 }

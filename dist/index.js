@@ -104543,7 +104543,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ensureCorrectShaCheckedOut = exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.createTempDir = void 0;
+exports.ensureTagAndRefCheckedOut = exports.stageActionFiles = exports.readFileContents = exports.isDirectory = exports.createArchives = exports.createTempDir = void 0;
 const fs = __importStar(__nccwpck_require__(57147));
 const fs_extra_1 = __importDefault(__nccwpck_require__(5630));
 const path = __importStar(__nccwpck_require__(71017));
@@ -104635,7 +104635,10 @@ exports.stageActionFiles = stageActionFiles;
 // Ensure the correct SHA is checked out for the tag by inspecting the git metadata in the workspace
 // and comparing it to the information actions provided us.
 // Provided ref should be in format refs/tags/<tagname>.
-async function ensureCorrectShaCheckedOut(tagRef, expectedSha, gitDir) {
+async function ensureTagAndRefCheckedOut(tagRef, expectedSha, gitDir) {
+    if (!tagRef.startsWith('refs/tags/')) {
+        throw new Error(`Tag ref provided is not in expected format.`);
+    }
     const git = simpleGit.simpleGit(gitDir);
     const tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef]);
     if (tagCommitSha.trim() !== expectedSha) {
@@ -104646,7 +104649,7 @@ async function ensureCorrectShaCheckedOut(tagRef, expectedSha, gitDir) {
         throw new Error(`The expected commit associated with the tag ${tagRef} is not checked out.`);
     }
 }
-exports.ensureCorrectShaCheckedOut = ensureCorrectShaCheckedOut;
+exports.ensureTagAndRefCheckedOut = ensureTagAndRefCheckedOut;
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
 async function fileMetadata(filePath) {
     const stats = fs.statSync(filePath);
@@ -104874,6 +104877,8 @@ async function run() {
         core.info(`Publishing action package version with options:`);
         core.info(cfg.serializeOptions(options));
         const semverTag = await parseSemverTagFromRef(options);
+        // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
+        await fsHelper.ensureTagAndRefCheckedOut(options.ref, options.sha, options.workspaceDir);
         const stagedActionFilesDir = fsHelper.createTempDir(options.runnerTempDir, 'staging');
         fsHelper.stageActionFiles(options.workspaceDir, stagedActionFilesDir);
         const archiveDir = fsHelper.createTempDir(options.runnerTempDir, 'archives');
@@ -104911,8 +104916,6 @@ async function parseSemverTagFromRef(opts) {
     if (!semverTag) {
         throw new Error(`${rawTag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`);
     }
-    // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
-    await fsHelper.ensureCorrectShaCheckedOut(ref, opts.sha, opts.workspaceDir);
     return semverTag;
 }
 // Generate an attestation using the actions toolkit

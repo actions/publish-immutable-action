@@ -118,11 +118,15 @@ export function stageActionFiles(actionDir: string, targetDir: string): void {
 // Ensure the correct SHA is checked out for the tag by inspecting the git metadata in the workspace
 // and comparing it to the information actions provided us.
 // Provided ref should be in format refs/tags/<tagname>.
-export async function ensureCorrectShaCheckedOut(
+export async function ensureTagAndRefCheckedOut(
   tagRef: string,
   expectedSha: string,
   gitDir: string
 ): Promise<void> {
+  if (!tagRef.startsWith('refs/tags/')) {
+    throw new Error(`Tag ref provided is not in expected format.`)
+  }
+
   const git: simpleGit.SimpleGit = simpleGit.simpleGit(gitDir)
 
   const tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef])

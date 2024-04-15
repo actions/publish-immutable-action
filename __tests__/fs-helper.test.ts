@@ -249,19 +249,25 @@ describe('ensureCorrectShaCheckedOut', () => {
 
   it('does not throw an error if the correct SHA is checked out', async () => {
     await expect(
-      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag2}`, commit2, dir)
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag2}`, commit2, dir)
     ).resolves.toBeUndefined()
   })
 
   it('throws an error if the correct SHA is not checked out', async () => {
     await expect(
-      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag1}`, commit1, dir)
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit1, dir)
     ).rejects.toThrow()
   })
 
   it('throws an error if the sha of the tag does not match expected sha', async () => {
     await expect(async () =>
-      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag1}`, commit2, dir)
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit2, dir)
+    ).rejects.toThrow()
+  })
+
+  it('throws if the provided ref is not a tag ref', async () => {
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(`refs/heads/main`, commit2, dir)
     ).rejects.toThrow()
   })
 })

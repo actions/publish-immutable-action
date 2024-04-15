@@ -51,7 +51,7 @@ describe('run', () => {
       .spyOn(fsHelper, 'stageActionFiles')
       .mockImplementation()
     ensureCorrectShaCheckedOutMock = jest
-      .spyOn(fsHelper, 'ensureCorrectShaCheckedOut')
+      .spyOn(fsHelper, 'ensureTagAndRefCheckedOut')
       .mockImplementation()
 
     // GHCR Client mocks
