@@ -18,7 +18,7 @@ export async function run(): Promise<void> {
     core.info(`Publishing action package version with options:`)
     core.info(cfg.serializeOptions(options))
 
-    const semverTag: semver.SemVer = await parseSemverTagFromRef(options)
+    const semverTag: semver.SemVer = parseSemverTagFromRef(options)
 
     // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
     await fsHelper.ensureTagAndRefCheckedOut(
@@ -84,9 +84,7 @@ export async function run(): Promise<void> {
 // This action can be triggered by any workflow that specifies a tag as its GITHUB_REF.
 // This includes releases, creating or pushing tags, or workflow_dispatch.
 // See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#about-events-that-trigger-workflows.
-async function parseSemverTagFromRef(
-  opts: cfg.PublishActionOptions
-): Promise<semver.SemVer> {
+function parseSemverTagFromRef(opts: cfg.PublishActionOptions): semver.SemVer {
   const ref = opts.ref
 
   if (!ref.startsWith('refs/tags/')) {

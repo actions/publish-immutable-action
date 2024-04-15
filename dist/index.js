@@ -104876,7 +104876,7 @@ async function run() {
         const options = await cfg.resolvePublishActionOptions();
         core.info(`Publishing action package version with options:`);
         core.info(cfg.serializeOptions(options));
-        const semverTag = await parseSemverTagFromRef(options);
+        const semverTag = parseSemverTagFromRef(options);
         // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
         await fsHelper.ensureTagAndRefCheckedOut(options.ref, options.sha, options.workspaceDir);
         const stagedActionFilesDir = fsHelper.createTempDir(options.runnerTempDir, 'staging');
@@ -104906,7 +104906,7 @@ exports.run = run;
 // This action can be triggered by any workflow that specifies a tag as its GITHUB_REF.
 // This includes releases, creating or pushing tags, or workflow_dispatch.
 // See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#about-events-that-trigger-workflows.
-async function parseSemverTagFromRef(opts) {
+function parseSemverTagFromRef(opts) {
     const ref = opts.ref;
     if (!ref.startsWith('refs/tags/')) {
         throw new Error(`The ref ${ref} is not a valid tag reference.`);
