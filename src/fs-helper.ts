@@ -4,6 +4,7 @@ import * as path from 'path'
 import * as tar from 'tar'
 import * as archiver from 'archiver'
 import * as crypto from 'crypto'
+import * as simpleGit from 'simple-git'
 
 export interface FileMetadata {
   path: string
@@ -110,6 +111,31 @@ export function stageActionFiles(actionDir: string, targetDir: string): void {
   if (!actionYmlFound) {
     throw new Error(
       `No action.yml or action.yaml file found in source repository`
+    )
+  }
+}
+
+// Ensure the correct SHA is checked out for the tag by inspecting the git metadata in the workspace
+// and comparing it to the information actions provided us.
+// Provided ref should be in format refs/tags/<tagname>.
+export async function ensureCorrectShaCheckedOut(
+  tagRef: string,
+  expectedSha: string,
+  gitDir: string
+): Promise<void> {
+  const git: simpleGit.SimpleGit = simpleGit.simpleGit(gitDir)
+
+  const tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef])
+  if (tagCommitSha.trim() !== expectedSha) {
+    throw new Error(
+      `The commit associated with the tag ${tagRef} does not match the SHA of the commit provided by the actions context.`
+    )
+  }
+
+  const currentlyCheckedOutSha = await git.revparse(['HEAD'])
+  if (currentlyCheckedOutSha.trim() !== expectedSha) {
+    throw new Error(
+      `The expected commit associated with the tag ${tagRef} is not checked out.`
     )
   }
 }

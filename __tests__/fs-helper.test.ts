@@ -212,3 +212,50 @@ describe('readFileContents', () => {
     expect(fsHelper.readFileContents(tempFile).toString()).toEqual(fileContent)
   })
 })
+
+describe('ensureCorrectShaCheckedOut', () => {
+  let dir: string
+  let commit1: string
+  let commit2: string
+  const tag1 = 'tag1'
+  const tag2 = 'tag2'
+
+  beforeEach(() => {
+    dir = fsHelper.createTempDir(tmpFileDir, 'subdir')
+
+    // Set up a git repository with two commits
+    execSync('git init', { cwd: dir })
+    execSync('git commit --allow-empty -m "test"', { cwd: dir })
+    execSync('git commit --allow-empty -m "test"', { cwd: dir })
+
+    // Grab the two commits
+    commit1 = execSync('git rev-parse HEAD~1', { cwd: dir }).toString().trim()
+    commit2 = execSync('git rev-parse HEAD', { cwd: dir }).toString().trim()
+
+    // Create a tag for each commit
+    execSync(`git tag ${tag1} ${commit1}`, { cwd: dir })
+    execSync(`git tag ${tag2} ${commit2}`, { cwd: dir })
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true })
+  })
+
+  it('does not throw an error if the correct SHA is checked out', async () => {
+    await expect(
+      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag2}`, commit2, dir)
+    ).resolves.toBeUndefined()
+  })
+
+  it('throws an error if the correct SHA is not checked out', async () => {
+    await expect(
+      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag1}`, commit1, dir)
+    ).rejects.toThrow()
+  })
+
+  it('throws an error if the sha of the tag does not match expected sha', async () => {
+    await expect(async () =>
+      fsHelper.ensureCorrectShaCheckedOut(`refs/tags/${tag1}`, commit2, dir)
+    ).rejects.toThrow()
+  })
+})

@@ -18,7 +18,7 @@ export async function run(): Promise<void> {
     core.info(`Publishing action package version with options:`)
     core.info(cfg.serializeOptions(options))
 
-    const semverTag: semver.SemVer = parseSemverTagFromRef(options.ref)
+    const semverTag: semver.SemVer = await parseSemverTagFromRef(options)
 
     const stagedActionFilesDir = fsHelper.createTempDir(
       options.runnerTempDir,
@@ -77,7 +77,11 @@ export async function run(): Promise<void> {
 // This action can be triggered by any workflow that specifies a tag as its GITHUB_REF.
 // This includes releases, creating or pushing tags, or workflow_dispatch.
 // See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#about-events-that-trigger-workflows.
-function parseSemverTagFromRef(ref: string): semver.SemVer {
+async function parseSemverTagFromRef(
+  opts: cfg.PublishActionOptions
+): Promise<semver.SemVer> {
+  const ref = opts.ref
+
   if (!ref.startsWith('refs/tags/')) {
     throw new Error(`The ref ${ref} is not a valid tag reference.`)
   }
@@ -89,6 +93,10 @@ function parseSemverTagFromRef(ref: string): semver.SemVer {
       `${rawTag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`
     )
   }
+
+  // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
+  await fsHelper.ensureCorrectShaCheckedOut(ref, opts.sha, opts.workspaceDir)
+
   return semverTag
 }
 

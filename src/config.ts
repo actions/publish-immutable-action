@@ -8,8 +8,6 @@ export interface PublishActionOptions {
   nameWithOwner: string
   // The GitHub token to use for API requests
   token: string
-  // The commit SHA to reset back to after the action completes
-  sha: string
   // The base URL for the GitHub API
   apiBaseUrl: string
   // The base URL for the GitHub Container Registry
@@ -30,6 +28,8 @@ export interface PublishActionOptions {
   event: string
   // The ref that triggered the action, associated with the event
   ref: string
+  // The commit SHA associated with the ref that triggered the action
+  sha: string
 }
 
 export async function resolvePublishActionOptions(): Promise<PublishActionOptions> {
