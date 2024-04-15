@@ -389,6 +389,7 @@ function baseOptions(): cfg.PublishActionOptions {
     isEnterprise: false,
     containerRegistryUrl: ghcrUrl,
     token: 'token',
-    ref: 'refs/tags/v1.2.3'
+    ref: 'refs/tags/v1.2.3',
+    repositoryVisibility: 'public'
   }
 }

@@ -99284,7 +99284,7 @@ ZipStream.prototype.finalize = function() {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
+exports.getRepositoryVisibility = exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
 async function getRepositoryMetadata(githubAPIURL, repository, token) {
     const response = await fetch(`${githubAPIURL}/repos/${repository}`, {
         method: 'GET',
@@ -99301,7 +99301,11 @@ async function getRepositoryMetadata(githubAPIURL, repository, token) {
     if (!data.id || !data.owner.id) {
         throw new Error(`Failed to fetch repository metadata: unexpected response format`);
     }
-    return { repoId: String(data.id), ownerId: String(data.owner.id) };
+    return {
+        repoId: String(data.id),
+        ownerId: String(data.owner.id),
+        visibility: String(data.visibility)
+    };
 }
 exports.getRepositoryMetadata = getRepositoryMetadata;
 async function getContainerRegistryURL(githubAPIURL) {
@@ -99317,6 +99321,18 @@ async function getContainerRegistryURL(githubAPIURL) {
     return registryURL;
 }
 exports.getContainerRegistryURL = getContainerRegistryURL;
+async function getRepositoryVisibility(githubAPIURL) {
+    const response = await fetch(`${githubAPIURL}/`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch repository metadata due to bad status code: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.full_name) {
+        throw new Error(`Failed to fetch repository metadata: unexpected response format`);
+    }
+    return data.full_name;
+}
+exports.getRepositoryVisibility = getRepositoryVisibility;
 
 
 /***/ }),
@@ -99406,6 +99422,11 @@ async function resolvePublishActionOptions() {
     const containerRegistryUrl = await apiClient.getContainerRegistryURL(apiBaseUrl);
     const isEnterprise = !githubServerUrl.includes('https://github.com') &&
         !githubServerUrl.endsWith('.ghe.com');
+    const repoMetadata = await apiClient.getRepositoryMetadata(apiBaseUrl, nameWithOwner, token);
+    if (repoMetadata.visibility === '') {
+        throw new Error(`Could not find repository visibility.`);
+    }
+    const repositoryVisibility = repoMetadata.visibility;
     return {
         event,
         ref,
@@ -99417,6 +99438,7 @@ async function resolvePublishActionOptions() {
         sha,
         containerRegistryUrl,
         isEnterprise,
+        repositoryVisibility,
         repositoryId,
         repositoryOwnerId
     };
@@ -99825,12 +99847,13 @@ function parseSemverTagFromRef(ref) {
 // Generate an attestation using the actions toolkit
 // Subject name will contain the repo/package name and the tag name
 async function generateAttestation(manifestDigest, semverTag, options) {
-    const subjectName = `${options.nameWithOwner}_${semverTag}`;
+    const subjectName = `${options.nameWithOwner}@${semverTag}`;
     const subjectDigest = removePrefix(manifestDigest, 'sha256:');
     return await attest.attestProvenance({
         subjectName,
         subjectDigest: { sha256: subjectDigest },
         token: options.token,
+        sigstore: 'github',
         skipWrite: false // TODO: Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account
     });
 }

@@ -98,13 +98,14 @@ async function generateAttestation(
   semverTag: string,
   options: cfg.PublishActionOptions
 ): Promise<attest.Attestation> {
-  const subjectName = `${options.nameWithOwner}_${semverTag}`
+  const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
 
   return await attest.attestProvenance({
     subjectName,
     subjectDigest: { sha256: subjectDigest },
     token: options.token,
+    sigstore: 'github',
     skipWrite: false // TODO: Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account
   })
 }

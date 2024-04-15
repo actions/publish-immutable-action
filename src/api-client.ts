@@ -2,7 +2,7 @@ export async function getRepositoryMetadata(
   githubAPIURL: string,
   repository: string,
   token: string
-): Promise<{ repoId: string; ownerId: string }> {
+): Promise<{ repoId: string; ownerId: string; visibility: string }> {
   const response = await fetch(`${githubAPIURL}/repos/${repository}`, {
     method: 'GET',
     headers: {
@@ -26,7 +26,11 @@ export async function getRepositoryMetadata(
     )
   }
 
-  return { repoId: String(data.id), ownerId: String(data.owner.id) }
+  return {
+    repoId: String(data.id),
+    ownerId: String(data.owner.id),
+    visibility: String(data.visibility)
+  }
 }
 
 export async function getContainerRegistryURL(
@@ -50,4 +54,24 @@ export async function getContainerRegistryURL(
 
   const registryURL: URL = new URL(data.url)
   return registryURL
+}
+
+export async function getRepositoryVisibility(
+  githubAPIURL: string
+): Promise<string> {
+  const response = await fetch(`${githubAPIURL}/`)
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch repository metadata due to bad status code: ${response.status}`
+    )
+  }
+  const data = await response.json()
+
+  if (!data.full_name) {
+    throw new Error(
+      `Failed to fetch repository metadata: unexpected response format`
+    )
+  }
+
+  return data.full_name
 }

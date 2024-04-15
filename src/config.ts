@@ -20,6 +20,8 @@ export interface PublishActionOptions {
   runnerTempDir: string
   // Whether this action is running in enterprise, determined from the github URL
   isEnterprise: boolean
+  // The visibility of the action repository ("public", "internal" or "private")
+  repositoryVisibility: string
   // The repository ID of the action repository
   repositoryId: string
   // The owner ID of the action repository
@@ -97,6 +99,18 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     !githubServerUrl.includes('https://github.com') &&
     !githubServerUrl.endsWith('.ghe.com')
 
+  const repoMetadata = await apiClient.getRepositoryMetadata(
+    apiBaseUrl,
+    nameWithOwner,
+    token
+  )
+
+  if (repoMetadata.visibility === '') {
+    throw new Error(`Could not find repository visibility.`)
+  }
+
+  const repositoryVisibility = repoMetadata.visibility
+
   return {
     event,
     ref,
@@ -108,6 +122,7 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     sha,
     containerRegistryUrl,
     isEnterprise,
+    repositoryVisibility,
     repositoryId,
     repositoryOwnerId
   }
