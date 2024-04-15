@@ -99284,7 +99284,7 @@ ZipStream.prototype.finalize = function() {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getRepositoryVisibility = exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
+exports.getContainerRegistryURL = exports.getRepositoryMetadata = void 0;
 async function getRepositoryMetadata(githubAPIURL, repository, token) {
     const response = await fetch(`${githubAPIURL}/repos/${repository}`, {
         method: 'GET',
@@ -99321,18 +99321,6 @@ async function getContainerRegistryURL(githubAPIURL) {
     return registryURL;
 }
 exports.getContainerRegistryURL = getContainerRegistryURL;
-async function getRepositoryVisibility(githubAPIURL) {
-    const response = await fetch(`${githubAPIURL}/`);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch repository metadata due to bad status code: ${response.status}`);
-    }
-    const data = await response.json();
-    if (!data.full_name) {
-        throw new Error(`Failed to fetch repository metadata: unexpected response format`);
-    }
-    return data.full_name;
-}
-exports.getRepositoryVisibility = getRepositoryVisibility;
 
 
 /***/ }),
@@ -99425,6 +99413,12 @@ async function resolvePublishActionOptions() {
     const repoMetadata = await apiClient.getRepositoryMetadata(apiBaseUrl, nameWithOwner, token);
     if (repoMetadata.visibility === '') {
         throw new Error(`Could not find repository visibility.`);
+    }
+    if (repoMetadata.repoId !== repositoryId) {
+        throw new Error(`Repository ID mismatch.`);
+    }
+    if (repoMetadata.ownerId !== repositoryOwnerId) {
+        throw new Error(`Repository Owner ID mismatch.`);
     }
     const repositoryVisibility = repoMetadata.visibility;
     return {
@@ -99816,6 +99810,7 @@ async function run() {
         core.setOutput('package-url', packageURL.toString());
         core.setOutput('package-manifest', JSON.stringify(manifest));
         core.setOutput('package-manifest-sha', manifestDigest);
+        // Attestations are not currently supported in GHES.
         if (!options.isEnterprise) {
             const attestation = await generateAttestation(manifestDigest, semverTag.raw, options);
             if (attestation.attestationID !== undefined) {
@@ -99854,7 +99849,11 @@ async function generateAttestation(manifestDigest, semverTag, options) {
         subjectDigest: { sha256: subjectDigest },
         token: options.token,
         sigstore: 'github',
-        skipWrite: false // TODO: Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account
+        // Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account.
+        // See: https://github.com/actions/toolkit/tree/main/packages/attest#storage
+        // Since internal repos can only be owned by Enterprises, we'll use this visibility as a proxy for "owned by a GitHub Enterprise Cloud account."
+        // See: https://docs.github.com/en/enterprise-cloud@latest/repositories/creating-and-managing-repositories/about-repositories#about-internal-repositories
+        skipWrite: options.repositoryVisibility === 'private'
     });
 }
 function removePrefix(str, prefix) {

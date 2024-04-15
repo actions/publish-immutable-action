@@ -55,23 +55,3 @@ export async function getContainerRegistryURL(
   const registryURL: URL = new URL(data.url)
   return registryURL
 }
-
-export async function getRepositoryVisibility(
-  githubAPIURL: string
-): Promise<string> {
-  const response = await fetch(`${githubAPIURL}/`)
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch repository metadata due to bad status code: ${response.status}`
-    )
-  }
-  const data = await response.json()
-
-  if (!data.full_name) {
-    throw new Error(
-      `Failed to fetch repository metadata: unexpected response format`
-    )
-  }
-
-  return data.full_name
-}

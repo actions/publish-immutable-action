@@ -162,6 +162,34 @@ describe('config.resolvePublishActionOptions', () => {
     )
   })
 
+  it('throws an error when returned repository id does not match env var', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      ownerId: '12345',
+      repoId: '54321'
+    })
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Repository ID mismatch.'
+    )
+  })
+
+  it('throws an error when returned repository owner id does not match env var', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      ownerId: '123124',
+      repoId: 'repositoryId'
+    })
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Repository Owner ID mismatch.'
+    )
+  })
+
   it('returns options when all values are present', async () => {
     getInputMock.mockImplementation((name: string) => {
       expect(name).toBe('github-token')
@@ -170,7 +198,9 @@ describe('config.resolvePublishActionOptions', () => {
     getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
 
     getRepositoryMetadataMock.mockResolvedValue({
-      visibility: 'public'
+      visibility: 'public',
+      repoId: 'repositoryId',
+      ownerId: 'repositoryOwnerId'
     })
 
     const options = await cfg.resolvePublishActionOptions()
@@ -198,8 +228,11 @@ describe('config.resolvePublishActionOptions', () => {
       return 'token'
     })
     getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+
     getRepositoryMetadataMock.mockResolvedValue({
-      visibility: 'public'
+      visibility: 'public',
+      repoId: 'repositoryId',
+      ownerId: 'repositoryOwnerId'
     })
 
     process.env.GITHUB_SERVER_URL = 'https://github-enterprise.com'

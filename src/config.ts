@@ -109,6 +109,14 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     throw new Error(`Could not find repository visibility.`)
   }
 
+  if (repoMetadata.repoId !== repositoryId) {
+    throw new Error(`Repository ID mismatch.`)
+  }
+
+  if (repoMetadata.ownerId !== repositoryOwnerId) {
+    throw new Error(`Repository Owner ID mismatch.`)
+  }
+
   const repositoryVisibility = repoMetadata.visibility
 
   return {

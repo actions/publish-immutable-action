@@ -57,6 +57,7 @@ export async function run(): Promise<void> {
     core.setOutput('package-manifest', JSON.stringify(manifest))
     core.setOutput('package-manifest-sha', manifestDigest)
 
+    // Attestations are not currently supported in GHES.
     if (!options.isEnterprise) {
       const attestation = await generateAttestation(
         manifestDigest,
@@ -106,7 +107,11 @@ async function generateAttestation(
     subjectDigest: { sha256: subjectDigest },
     token: options.token,
     sigstore: 'github',
-    skipWrite: false // TODO: Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account
+    // Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account.
+    // See: https://github.com/actions/toolkit/tree/main/packages/attest#storage
+    // Since internal repos can only be owned by Enterprises, we'll use this visibility as a proxy for "owned by a GitHub Enterprise Cloud account."
+    // See: https://docs.github.com/en/enterprise-cloud@latest/repositories/creating-and-managing-repositories/about-repositories#about-internal-repositories
+    skipWrite: options.repositoryVisibility === 'private'
   })
 }
 
