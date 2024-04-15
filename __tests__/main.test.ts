@@ -23,6 +23,7 @@ let setOutputMock: jest.SpyInstance
 let createTempDirMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let stageActionFilesMock: jest.SpyInstance
+let ensureCorrectShaCheckedOutMock: jest.SpyInstance
 let publishOCIArtifactMock: jest.SpyInstance
 
 // Mock the config resolution
@@ -48,6 +49,9 @@ describe('run', () => {
       .mockImplementation()
     stageActionFilesMock = jest
       .spyOn(fsHelper, 'stageActionFiles')
+      .mockImplementation()
+    ensureCorrectShaCheckedOutMock = jest
+      .spyOn(fsHelper, 'ensureTagAndRefCheckedOut')
       .mockImplementation()
 
     // GHCR Client mocks
@@ -93,9 +97,24 @@ describe('run', () => {
     }
   })
 
+  it('fails if ensuring the correct SHA is checked out errors', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {
+      throw new Error('Something went wrong')
+    })
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
+  })
+
   it('fails if creating staging temp directory fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
     createTempDirMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
@@ -109,6 +128,8 @@ describe('run', () => {
 
   it('fails if staging files fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation(() => {
       return 'tmpDir/staging'
@@ -127,6 +148,8 @@ describe('run', () => {
 
   it('fails if creating archives temp directory fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation((_, path: string) => {
       if (path === 'staging') {
@@ -147,6 +170,8 @@ describe('run', () => {
   it('fails if creating archives fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
+
     createTempDirMock.mockImplementation(() => {
       return 'stagingOrArchivesDir'
     })
@@ -166,6 +191,8 @@ describe('run', () => {
 
   it('fails if publishing OCI artifact fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation(() => {
       return 'stagingOrArchivesDir'
@@ -201,6 +228,8 @@ describe('run', () => {
 
   it('fails if creating attestation fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation(() => {
       return 'stagingOrArchivesDir'
@@ -241,10 +270,12 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in enterprise', async () => {
+  it('uploads the artifact, returns package metadata from GHCR, and skips writing attestation in enterprise', async () => {
     const options = baseOptions()
     options.isEnterprise = true
     resolvePublishActionOptionsMock.mockReturnValue(options)
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation(() => {
       return 'stagingOrArchivesDir'
@@ -299,8 +330,10 @@ describe('run', () => {
     )
   })
 
-  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in non-enterprise', async () => {
+  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in non-enterprise for public repo', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
 
     createTempDirMock.mockImplementation(() => {
       return 'stagingOrArchivesDir'
@@ -330,7 +363,92 @@ describe('run', () => {
       }
     })
 
-    generateAttestationMock.mockImplementation(async () => {
+    generateAttestationMock.mockImplementation(async options => {
+      expect(options).toHaveProperty('skipWrite', false)
+
+      return {
+        attestationID: 'test-attestation-id',
+        certificate: 'test',
+        bundle: {
+          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          verificationMaterial: {
+            publicKey: {
+              hint: 'test-hint'
+            }
+          }
+        }
+      }
+    })
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+
+    // Check outputs
+    expect(setOutputMock).toHaveBeenCalledTimes(4)
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-url',
+      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest',
+      expect.any(String)
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest-sha',
+      'sha256:my-test-digest'
+    )
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'attestation-id',
+      'test-attestation-id'
+    )
+  })
+
+  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation but skips storing it in non-enterprise for private repo', async () => {
+    const opts = baseOptions()
+    opts.repositoryVisibility = 'private'
+
+    resolvePublishActionOptionsMock.mockReturnValue(opts)
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    publishOCIArtifactMock.mockImplementation(() => {
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        manifestDigest: 'sha256:my-test-digest'
+      }
+    })
+
+    generateAttestationMock.mockImplementation(async options => {
+      expect(options).toHaveProperty('skipWrite', true)
+
       return {
         attestationID: 'test-attestation-id',
         certificate: 'test',
@@ -389,6 +507,7 @@ function baseOptions(): cfg.PublishActionOptions {
     isEnterprise: false,
     containerRegistryUrl: ghcrUrl,
     token: 'token',
-    ref: 'refs/tags/v1.2.3'
+    ref: 'refs/tags/v1.2.3',
+    repositoryVisibility: 'public'
   }
 }

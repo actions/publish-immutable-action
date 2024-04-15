@@ -2,7 +2,7 @@ export async function getRepositoryMetadata(
   githubAPIURL: string,
   repository: string,
   token: string
-): Promise<{ repoId: string; ownerId: string }> {
+): Promise<{ repoId: string; ownerId: string; visibility: string }> {
   const response = await fetch(`${githubAPIURL}/repos/${repository}`, {
     method: 'GET',
     headers: {
@@ -26,7 +26,11 @@ export async function getRepositoryMetadata(
     )
   }
 
-  return { repoId: String(data.id), ownerId: String(data.owner.id) }
+  return {
+    repoId: String(data.id),
+    ownerId: String(data.owner.id),
+    visibility: String(data.visibility)
+  }
 }
 
 export async function getContainerRegistryURL(

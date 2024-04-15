@@ -8,8 +8,6 @@ export interface PublishActionOptions {
   nameWithOwner: string
   // The GitHub token to use for API requests
   token: string
-  // The commit SHA to reset back to after the action completes
-  sha: string
   // The base URL for the GitHub API
   apiBaseUrl: string
   // The base URL for the GitHub Container Registry
@@ -20,6 +18,8 @@ export interface PublishActionOptions {
   runnerTempDir: string
   // Whether this action is running in enterprise, determined from the github URL
   isEnterprise: boolean
+  // The visibility of the action repository ("public", "internal" or "private")
+  repositoryVisibility: string
   // The repository ID of the action repository
   repositoryId: string
   // The owner ID of the action repository
@@ -28,6 +28,8 @@ export interface PublishActionOptions {
   event: string
   // The ref that triggered the action, associated with the event
   ref: string
+  // The commit SHA associated with the ref that triggered the action
+  sha: string
 }
 
 export async function resolvePublishActionOptions(): Promise<PublishActionOptions> {
@@ -97,6 +99,26 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     !githubServerUrl.includes('https://github.com') &&
     !githubServerUrl.endsWith('.ghe.com')
 
+  const repoMetadata = await apiClient.getRepositoryMetadata(
+    apiBaseUrl,
+    nameWithOwner,
+    token
+  )
+
+  if (repoMetadata.visibility === '') {
+    throw new Error(`Could not find repository visibility.`)
+  }
+
+  if (repoMetadata.repoId !== repositoryId) {
+    throw new Error(`Repository ID mismatch.`)
+  }
+
+  if (repoMetadata.ownerId !== repositoryOwnerId) {
+    throw new Error(`Repository Owner ID mismatch.`)
+  }
+
+  const repositoryVisibility = repoMetadata.visibility
+
   return {
     event,
     ref,
@@ -108,6 +130,7 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     sha,
     containerRegistryUrl,
     isEnterprise,
+    repositoryVisibility,
     repositoryId,
     repositoryOwnerId
   }

@@ -4,6 +4,7 @@ import * as cfg from '../src/config'
 import * as apiClient from '../src/api-client'
 
 let getContainerRegistryURLMock: jest.SpyInstance
+let getRepositoryMetadataMock: jest.SpyInstance
 let getInputMock: jest.SpyInstance
 
 const ghcrUrl = new URL('https://ghcr.io')
@@ -12,6 +13,10 @@ describe('config.resolvePublishActionOptions', () => {
   beforeEach(() => {
     getContainerRegistryURLMock = jest
       .spyOn(apiClient, 'getContainerRegistryURL')
+      .mockImplementation()
+
+    getRepositoryMetadataMock = jest
+      .spyOn(apiClient, 'getRepositoryMetadata')
       .mockImplementation()
 
     getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
@@ -133,12 +138,70 @@ describe('config.resolvePublishActionOptions', () => {
     )
   })
 
+  it('throws an error when getting the repository metadata fails', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockRejectedValue(
+      new Error('Failed to get repository metadata')
+    )
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Failed to get repository metadata'
+    )
+  })
+
+  it('throws an error when returned repository visibility is empty', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: ''
+    })
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Could not find repository visibility.'
+    )
+  })
+
+  it('throws an error when returned repository id does not match env var', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      ownerId: '12345',
+      repoId: '54321'
+    })
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Repository ID mismatch.'
+    )
+  })
+
+  it('throws an error when returned repository owner id does not match env var', async () => {
+    getInputMock.mockReturnValueOnce('token')
+    getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      ownerId: '123124',
+      repoId: 'repositoryId'
+    })
+
+    await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
+      'Repository Owner ID mismatch.'
+    )
+  })
+
   it('returns options when all values are present', async () => {
     getInputMock.mockImplementation((name: string) => {
       expect(name).toBe('github-token')
       return 'token'
     })
     getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      repoId: 'repositoryId',
+      ownerId: 'repositoryOwnerId'
+    })
 
     const options = await cfg.resolvePublishActionOptions()
 
@@ -150,6 +213,7 @@ describe('config.resolvePublishActionOptions', () => {
       apiBaseUrl: 'apiBaseUrl',
       runnerTempDir: 'runnerTempDir',
       sha: 'sha',
+      repositoryVisibility: 'public',
       repositoryId: 'repositoryId',
       repositoryOwnerId: 'repositoryOwnerId',
       isEnterprise: false,
@@ -164,6 +228,12 @@ describe('config.resolvePublishActionOptions', () => {
       return 'token'
     })
     getContainerRegistryURLMock.mockResolvedValue(ghcrUrl)
+
+    getRepositoryMetadataMock.mockResolvedValue({
+      visibility: 'public',
+      repoId: 'repositoryId',
+      ownerId: 'repositoryOwnerId'
+    })
 
     process.env.GITHUB_SERVER_URL = 'https://github-enterprise.com'
 
@@ -181,7 +251,8 @@ describe('config.resolvePublishActionOptions', () => {
       repositoryOwnerId: 'repositoryOwnerId',
       isEnterprise: true,
       containerRegistryUrl: ghcrUrl,
-      token: 'token'
+      token: 'token',
+      repositoryVisibility: 'public'
     })
   })
 })
@@ -200,7 +271,8 @@ describe('config.serializeOptions', () => {
       repositoryOwnerId: 'repositoryOwnerId',
       isEnterprise: false,
       containerRegistryUrl: ghcrUrl,
-      token: 'token'
+      token: 'token',
+      repositoryVisibility: 'public'
     }
 
     const serialized = cfg.serializeOptions(options)

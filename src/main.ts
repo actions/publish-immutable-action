@@ -18,7 +18,14 @@ export async function run(): Promise<void> {
     core.info(`Publishing action package version with options:`)
     core.info(cfg.serializeOptions(options))
 
-    const semverTag: semver.SemVer = parseSemverTagFromRef(options.ref)
+    const semverTag: semver.SemVer = parseSemverTagFromRef(options)
+
+    // Ensure the correct SHA is checked out for the tag we're parsing, otherwise the bundled content will be incorrect.
+    await fsHelper.ensureTagAndRefCheckedOut(
+      options.ref,
+      options.sha,
+      options.workspaceDir
+    )
 
     const stagedActionFilesDir = fsHelper.createTempDir(
       options.runnerTempDir,
@@ -57,6 +64,7 @@ export async function run(): Promise<void> {
     core.setOutput('package-manifest', JSON.stringify(manifest))
     core.setOutput('package-manifest-sha', manifestDigest)
 
+    // Attestations are not currently supported in GHES.
     if (!options.isEnterprise) {
       const attestation = await generateAttestation(
         manifestDigest,
@@ -76,7 +84,9 @@ export async function run(): Promise<void> {
 // This action can be triggered by any workflow that specifies a tag as its GITHUB_REF.
 // This includes releases, creating or pushing tags, or workflow_dispatch.
 // See https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#about-events-that-trigger-workflows.
-function parseSemverTagFromRef(ref: string): semver.SemVer {
+function parseSemverTagFromRef(opts: cfg.PublishActionOptions): semver.SemVer {
+  const ref = opts.ref
+
   if (!ref.startsWith('refs/tags/')) {
     throw new Error(`The ref ${ref} is not a valid tag reference.`)
   }
@@ -88,6 +98,7 @@ function parseSemverTagFromRef(ref: string): semver.SemVer {
       `${rawTag} is not a valid semantic version tag, and so cannot be uploaded to the action package.`
     )
   }
+
   return semverTag
 }
 
@@ -98,14 +109,19 @@ async function generateAttestation(
   semverTag: string,
   options: cfg.PublishActionOptions
 ): Promise<attest.Attestation> {
-  const subjectName = `${options.nameWithOwner}_${semverTag}`
+  const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
 
   return await attest.attestProvenance({
     subjectName,
     subjectDigest: { sha256: subjectDigest },
     token: options.token,
-    skipWrite: false // TODO: Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account
+    sigstore: 'github',
+    // Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account.
+    // See: https://github.com/actions/toolkit/tree/main/packages/attest#storage
+    // Since internal repos can only be owned by Enterprises, we'll use this visibility as a proxy for "owned by a GitHub Enterprise Cloud account."
+    // See: https://docs.github.com/en/enterprise-cloud@latest/repositories/creating-and-managing-repositories/about-repositories#about-internal-repositories
+    skipWrite: options.repositoryVisibility === 'private'
   })
 }
 

@@ -18,10 +18,20 @@ afterEach(() => {
 describe('getRepositoryMetadata', () => {
   it('returns repository metadata when the fetch response is ok', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: '123', owner: { id: '456' } }))
+      new Response(
+        JSON.stringify({
+          id: '123',
+          owner: { id: '456' },
+          visibility: 'public'
+        })
+      )
     )
     const result = await getRepositoryMetadata(url, 'repository', 'token')
-    expect(result).toEqual({ repoId: '123', ownerId: '456' })
+    expect(result).toEqual({
+      repoId: '123',
+      ownerId: '456',
+      visibility: 'public'
+    })
   })
 
   it('throws an error when the fetch errors', async () => {
