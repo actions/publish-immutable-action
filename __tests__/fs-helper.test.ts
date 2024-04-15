@@ -223,8 +223,14 @@ describe('ensureCorrectShaCheckedOut', () => {
   beforeEach(() => {
     dir = fsHelper.createTempDir(tmpFileDir, 'subdir')
 
-    // Set up a git repository with two commits
+    // Set up a git repository
     execSync('git init', { cwd: dir })
+
+    // Set user and email in this git repo (not globally)
+    execSync('git config user.email monalisa@github.com', { cwd: dir })
+    execSync('git config user.name Mona', { cwd: dir })
+
+    // Add two commits
     execSync('git commit --allow-empty -m "test"', { cwd: dir })
     execSync('git commit --allow-empty -m "test"', { cwd: dir })
 
