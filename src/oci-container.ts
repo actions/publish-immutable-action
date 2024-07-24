@@ -46,7 +46,7 @@ export function createActionPackageManifest(
       'com.github.package.version': version,
       'com.github.source.repo.id': repoId,
       'com.github.source.repo.owner.id': ownerId,
-      'com.github.source.commit': sourceCommit
+      'org.opencontainers.image.sourcecommit': sourceCommit
     }
   }
 
