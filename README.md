@@ -7,7 +7,7 @@
 This action packages _your action_ as an [OCI container](https://opencontainers.org/) and publishes it to the [GitHub Container registry](https://ghcr.io).
 This allows your action to be consumed as an _immutable_ package if a [SemVer](https://semver.org/) is specified in the consumer's workflow file.
 
-Your workflow can be triggered by any [event](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows) which has a `GITHUB_REF` that points to a git tag. 
+Your workflow can be triggered by any [event](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows) which has a `GITHUB_REF` that points to a git tag.
 Some examples of these events are:
 
 - [`release`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release)
