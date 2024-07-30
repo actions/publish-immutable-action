@@ -10,9 +10,9 @@ This allows your action to be consumed as an _immutable_ package if a [SemVer](h
 Your workflow can be triggered by any [event](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows) which has a `GITHUB_REF` that points to a git tag.
 Some examples of these events are:
 
-- [`release`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release)
+- [`release`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release) (uses tag associated with release)
 - [`push`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) (only applies to pushed tags)
-- [`workflow_dispatch`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch) (only applies subject of dispatch is a tag)
+- [`workflow_dispatch`](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_dispatch) (only applies if subject of dispatch is a tag)
 
 The associated tag must follow [semantic versioning](https://semver.org/) - this tag value will be used to create a package version.
 
@@ -33,7 +33,7 @@ An actions workflow file like the following should be placed in your action repo
 
 <!-- start usage -->
 ```yaml
-name: "Publish Actions Package"
+name: "Publish Immutable Action Version"
 
 on:
   release:
