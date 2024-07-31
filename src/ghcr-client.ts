@@ -52,10 +52,10 @@ export async function publishOCIArtifact(
           uploadBlobEndpoint,
           b64Token
         )
-      case 'application/vnd.github.actions.package.config.v1+json':
+      case 'application/vnd.oci.empty.v1+json':
         return uploadLayer(
           layer,
-          { path: '', size: 0, sha256: layer.digest },
+          { path: '', size: 2, sha256: layer.digest },
           registry,
           checkBlobEndpoint,
           uploadBlobEndpoint,
@@ -143,8 +143,8 @@ async function uploadLayer(
 
   // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
   let data: Buffer
-  if (file.size === 0) {
-    data = Buffer.alloc(0)
+  if (layer.mediaType === 'application/vnd.oci.empty.v1+json') {
+    data = Buffer.from('{}')
   } else {
     data = fsHelper.readFileContents(file.path)
   }

@@ -1,17 +1,15 @@
 export async function getRepositoryMetadata(
+  githubAPIURL: string,
   repository: string,
   token: string
-): Promise<{ repoId: string; ownerId: string }> {
-  const response = await fetch(
-    `${process.env.GITHUB_API_URL}/repos/${repository}`,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github.v3+json'
-      }
+): Promise<{ repoId: string; ownerId: string; visibility: string }> {
+  const response = await fetch(`${githubAPIURL}/repos/${repository}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json'
     }
-  )
+  })
 
   if (!response.ok) {
     throw new Error(
@@ -28,12 +26,18 @@ export async function getRepositoryMetadata(
     )
   }
 
-  return { repoId: String(data.id), ownerId: String(data.owner.id) }
+  return {
+    repoId: String(data.id),
+    ownerId: String(data.owner.id),
+    visibility: String(data.visibility)
+  }
 }
 
-export async function getContainerRegistryURL(): Promise<URL> {
+export async function getContainerRegistryURL(
+  githubAPIURL: string
+): Promise<URL> {
   const response = await fetch(
-    `${process.env.GITHUB_API_URL}/packages/container-registry-url`
+    `${githubAPIURL}/packages/container-registry-url`
   )
   if (!response.ok) {
     throw new Error(

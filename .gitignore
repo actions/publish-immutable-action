@@ -1,6 +1,8 @@
 # Dependency directory
 node_modules
 
+.npmrc
+
 # Rest pulled from https://github.com/github/gitignore/blob/master/Node.gitignore
 # Logs
 logs

@@ -4,19 +4,19 @@ import * as os from 'os'
 import { execSync } from 'child_process'
 
 const fileContent = 'This is the content of the file'
+const tmpFileDir = '/tmp'
 
 describe('stageActionFiles', () => {
   let sourceDir: string
   let stagingDir: string
 
   beforeEach(() => {
-    process.env.RUNNER_TEMP = '/tmp'
-    sourceDir = fsHelper.createTempDir('source')
+    sourceDir = fsHelper.createTempDir(tmpFileDir, 'source')
     fs.mkdirSync(`${sourceDir}/src`)
     fs.writeFileSync(`${sourceDir}/src/main.js`, fileContent)
     fs.writeFileSync(`${sourceDir}/src/other.js`, fileContent)
 
-    stagingDir = fsHelper.createTempDir('staging')
+    stagingDir = fsHelper.createTempDir(tmpFileDir, 'staging')
   })
 
   afterEach(() => {
@@ -72,14 +72,13 @@ describe('createArchives', () => {
   let archiveDir: string
 
   beforeAll(() => {
-    process.env.RUNNER_TEMP = '/tmp'
-    stageDir = fsHelper.createTempDir('staging')
+    stageDir = fsHelper.createTempDir(tmpFileDir, 'staging')
     fs.writeFileSync(`${stageDir}/hello.txt`, fileContent)
     fs.writeFileSync(`${stageDir}/world.txt`, fileContent)
   })
 
   beforeEach(() => {
-    archiveDir = fsHelper.createTempDir('archive')
+    archiveDir = fsHelper.createTempDir(tmpFileDir, 'archive')
   })
 
   afterEach(() => {
@@ -156,19 +155,17 @@ describe('createTempDir', () => {
   })
 
   it('creates a temporary directory', () => {
-    process.env.RUNNER_TEMP = '/tmp'
-    const tmpDir = fsHelper.createTempDir('subdir')
+    const tmpDir = fsHelper.createTempDir(tmpFileDir, 'subdir')
 
     expect(fs.existsSync(tmpDir)).toEqual(true)
     expect(fs.statSync(tmpDir).isDirectory()).toEqual(true)
   })
 
   it('creates a unique temporary directory', () => {
-    process.env.RUNNER_TEMP = '/tmp'
-    const dir1 = fsHelper.createTempDir('dir1')
+    const dir1 = fsHelper.createTempDir(tmpFileDir, 'dir1')
     dirs.push(dir1)
 
-    const dir2 = fsHelper.createTempDir('dir2')
+    const dir2 = fsHelper.createTempDir(tmpFileDir, 'dir2')
     dirs.push(dir2)
 
     expect(dir1).not.toEqual(dir2)
@@ -179,8 +176,7 @@ describe('isDirectory', () => {
   let dir: string
 
   beforeEach(() => {
-    process.env.RUNNER_TEMP = '/tmp'
-    dir = fsHelper.createTempDir('subdir')
+    dir = fsHelper.createTempDir(tmpFileDir, 'subdir')
   })
 
   afterEach(() => {
@@ -202,8 +198,7 @@ describe('readFileContents', () => {
   let dir: string
 
   beforeEach(() => {
-    process.env.RUNNER_TEMP = '/tmp'
-    dir = fsHelper.createTempDir('subdir')
+    dir = fsHelper.createTempDir(tmpFileDir, 'subdir')
   })
 
   afterEach(() => {
@@ -215,5 +210,64 @@ describe('readFileContents', () => {
     fs.writeFileSync(tempFile, fileContent)
 
     expect(fsHelper.readFileContents(tempFile).toString()).toEqual(fileContent)
+  })
+})
+
+describe('ensureCorrectShaCheckedOut', () => {
+  let dir: string
+  let commit1: string
+  let commit2: string
+  const tag1 = 'tag1'
+  const tag2 = 'tag2'
+
+  beforeEach(() => {
+    dir = fsHelper.createTempDir(tmpFileDir, 'subdir')
+
+    // Set up a git repository
+    execSync('git init', { cwd: dir })
+
+    // Set user and email in this git repo (not globally)
+    execSync('git config user.email monalisa@github.com', { cwd: dir })
+    execSync('git config user.name Mona', { cwd: dir })
+
+    // Add two commits
+    execSync('git commit --allow-empty -m "test"', { cwd: dir })
+    execSync('git commit --allow-empty -m "test"', { cwd: dir })
+
+    // Grab the two commits
+    commit1 = execSync('git rev-parse HEAD~1', { cwd: dir }).toString().trim()
+    commit2 = execSync('git rev-parse HEAD', { cwd: dir }).toString().trim()
+
+    // Create a tag for each commit
+    execSync(`git tag ${tag1} ${commit1}`, { cwd: dir })
+    execSync(`git tag ${tag2} ${commit2}`, { cwd: dir })
+  })
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true })
+  })
+
+  it('does not throw an error if the correct SHA is checked out', async () => {
+    await expect(
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag2}`, commit2, dir)
+    ).resolves.toBeUndefined()
+  })
+
+  it('throws an error if the correct SHA is not checked out', async () => {
+    await expect(
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit1, dir)
+    ).rejects.toThrow()
+  })
+
+  it('throws an error if the sha of the tag does not match expected sha', async () => {
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit2, dir)
+    ).rejects.toThrow()
+  })
+
+  it('throws if the provided ref is not a tag ref', async () => {
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(`refs/heads/main`, commit2, dir)
+    ).rejects.toThrow()
   })
 })

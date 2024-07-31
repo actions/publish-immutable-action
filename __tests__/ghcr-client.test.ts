@@ -159,23 +159,17 @@ const testManifest: ociContainer.Manifest = {
   mediaType: 'application/vnd.oci.image.manifest.v1+json',
   artifactType: 'application/vnd.oci.image.manifest.v1+json',
   config: {
-    mediaType: 'application/vnd.github.actions.package.config.v1+json',
-    size: 0,
+    mediaType: 'application/vnd.oci.empty.v1+json',
+    size: 2,
     digest:
-      'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    annotations: {
-      'org.opencontainers.image.title': 'config.json'
-    }
+      'sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'
   },
   layers: [
     {
-      mediaType: 'application/vnd.github.actions.package.config.v1+json',
-      size: 0,
+      mediaType: 'application/vnd.oci.empty.v1+json',
+      size: 2,
       digest:
-        'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      annotations: {
-        'org.opencontainers.image.title': 'config.json'
-      }
+        'sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'
     },
     {
       mediaType: 'application/vnd.github.actions.package.layer.v1.tar+gzip',

@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   test-typescript:
@@ -42,4 +43,4 @@ jobs:
       - name: Test
         id: npm-ci-test
         run: npm run ci-test
-        
+

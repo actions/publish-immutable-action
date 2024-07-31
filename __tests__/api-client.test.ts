@@ -3,6 +3,8 @@ import {
   getContainerRegistryURL
 } from '../src/api-client'
 
+const url = 'https://registry.example.com'
+
 let fetchMock: jest.SpyInstance
 
 beforeEach(() => {
@@ -16,22 +18,34 @@ afterEach(() => {
 describe('getRepositoryMetadata', () => {
   it('returns repository metadata when the fetch response is ok', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: '123', owner: { id: '456' } }))
+      new Response(
+        JSON.stringify({
+          id: '123',
+          owner: { id: '456' },
+          visibility: 'public'
+        })
+      )
     )
-    const result = await getRepositoryMetadata('repository', 'token')
-    expect(result).toEqual({ repoId: '123', ownerId: '456' })
+    const result = await getRepositoryMetadata(url, 'repository', 'token')
+    expect(result).toEqual({
+      repoId: '123',
+      ownerId: '456',
+      visibility: 'public'
+    })
   })
 
   it('throws an error when the fetch errors', async () => {
     fetchMock.mockRejectedValueOnce(new Error('API is down'))
-    await expect(getRepositoryMetadata('repository', 'token')).rejects.toThrow(
-      'API is down'
-    )
+    await expect(
+      getRepositoryMetadata(url, 'repository', 'token')
+    ).rejects.toThrow('API is down')
   })
 
   it('throws an error when the response status is not ok', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }))
-    await expect(getRepositoryMetadata('repository', 'token')).rejects.toThrow(
+    await expect(
+      getRepositoryMetadata(url, 'repository', 'token')
+    ).rejects.toThrow(
       'Failed to fetch repository metadata due to bad status code: 500'
     )
   })
@@ -40,7 +54,9 @@ describe('getRepositoryMetadata', () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ wrong: 'format' }))
     )
-    await expect(getRepositoryMetadata('repository', 'token')).rejects.toThrow(
+    await expect(
+      getRepositoryMetadata(url, 'repository', 'token')
+    ).rejects.toThrow(
       'Failed to fetch repository metadata: unexpected response format'
     )
   })
@@ -51,18 +67,18 @@ describe('getContainerRegistryURL', () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ url: 'https://registry.example.com' }))
     )
-    const result = await getContainerRegistryURL()
+    const result = await getContainerRegistryURL(url)
     expect(result).toEqual(new URL('https://registry.example.com'))
   })
 
   it('throws an error when the fetch errors', async () => {
     fetchMock.mockRejectedValueOnce(new Error('API is down'))
-    await expect(getContainerRegistryURL()).rejects.toThrow('API is down')
+    await expect(getContainerRegistryURL(url)).rejects.toThrow('API is down')
   })
 
   it('throws an error when the response status is not ok', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }))
-    await expect(getContainerRegistryURL()).rejects.toThrow(
+    await expect(getContainerRegistryURL(url)).rejects.toThrow(
       'Failed to fetch container registry url due to bad status code: 500'
     )
   })
@@ -71,7 +87,7 @@ describe('getContainerRegistryURL', () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ wrong: 'format' }))
     )
-    await expect(getContainerRegistryURL()).rejects.toThrow(
+    await expect(getContainerRegistryURL(url)).rejects.toThrow(
       'Failed to fetch repository metadata: unexpected response format'
     )
   })

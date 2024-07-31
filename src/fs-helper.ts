@@ -4,6 +4,7 @@ import * as path from 'path'
 import * as tar from 'tar'
 import * as archiver from 'archiver'
 import * as crypto from 'crypto'
+import * as simpleGit from 'simple-git'
 
 export interface FileMetadata {
   path: string
@@ -11,12 +12,12 @@ export interface FileMetadata {
   sha256: string
 }
 
-export function createTempDir(subDirName: string): string {
-  const runnerTempDir: string = process.env.RUNNER_TEMP || ''
-  const tempDir = path.join(runnerTempDir, subDirName)
+// Simple convenience around creating subdirectories in the same base temporary directory
+export function createTempDir(tmpDirPath: string, subDirName: string): string {
+  const tempDir = path.join(tmpDirPath, subDirName)
 
   if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir)
+    fs.mkdirSync(tempDir, { recursive: true })
   }
 
   return tempDir
@@ -48,7 +49,7 @@ export async function createArchives(
     })
 
     archive.pipe(output)
-    archive.directory(distPath, false)
+    archive.directory(distPath, 'action')
     archive.finalize()
   })
 
@@ -58,7 +59,8 @@ export async function createArchives(
         {
           file: tarPath,
           C: distPath,
-          gzip: true
+          gzip: true,
+          prefix: 'action'
         },
         ['.']
       )
@@ -109,6 +111,35 @@ export function stageActionFiles(actionDir: string, targetDir: string): void {
   if (!actionYmlFound) {
     throw new Error(
       `No action.yml or action.yaml file found in source repository`
+    )
+  }
+}
+
+// Ensure the correct SHA is checked out for the tag by inspecting the git metadata in the workspace
+// and comparing it to the information actions provided us.
+// Provided ref should be in format refs/tags/<tagname>.
+export async function ensureTagAndRefCheckedOut(
+  tagRef: string,
+  expectedSha: string,
+  gitDir: string
+): Promise<void> {
+  if (!tagRef.startsWith('refs/tags/')) {
+    throw new Error(`Tag ref provided is not in expected format.`)
+  }
+
+  const git: simpleGit.SimpleGit = simpleGit.simpleGit(gitDir)
+
+  const tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef])
+  if (tagCommitSha.trim() !== expectedSha) {
+    throw new Error(
+      `The commit associated with the tag ${tagRef} does not match the SHA of the commit provided by the actions context.`
+    )
+  }
+
+  const currentlyCheckedOutSha = await git.revparse(['HEAD'])
+  if (currentlyCheckedOutSha.trim() !== expectedSha) {
+    throw new Error(
+      `The expected commit associated with the tag ${tagRef} is not checked out.`
     )
   }
 }
