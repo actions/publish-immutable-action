@@ -12,7 +12,7 @@ export async function publishOCIArtifact(
   zipFile: FileMetadata,
   tarFile: FileMetadata,
   manifest: ociContainer.Manifest
-): Promise<{ packageURL: URL; manifestDigest: string }> {
+): Promise<{ packageURL: URL; publishedDigest: string }> {
   const b64Token = Buffer.from(token).toString('base64')
 
   const checkBlobEndpoint = new URL(
@@ -76,7 +76,7 @@ export async function publishOCIArtifact(
 
   return {
     packageURL: new URL(`${repository}:${semver}`, registry),
-    manifestDigest: digest
+    publishedDigest: digest
   }
 }
 
