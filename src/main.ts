@@ -50,19 +50,7 @@ export async function run(): Promise<void> {
       new Date()
     )
 
-    const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(
-      options.token,
-      options.containerRegistryUrl,
-      options.nameWithOwner,
-      semverTag.raw,
-      archives.zipFile,
-      archives.tarFile,
-      manifest
-    )
-
-    core.setOutput('package-url', packageURL.toString())
-    core.setOutput('package-manifest', JSON.stringify(manifest))
-    core.setOutput('package-manifest-sha', manifestDigest)
+    const manifestDigest = ociContainer.sha256Digest(manifest)
 
     // Attestations are not currently supported in GHES.
     if (!options.isEnterprise) {
@@ -75,6 +63,26 @@ export async function run(): Promise<void> {
         core.setOutput('attestation-id', attestation.attestationID)
       }
     }
+
+    const { packageURL, publishedDigest } = await ghcr.publishOCIArtifact(
+      options.token,
+      options.containerRegistryUrl,
+      options.nameWithOwner,
+      semverTag.raw,
+      archives.zipFile,
+      archives.tarFile,
+      manifest
+    )
+
+    if (manifestDigest !== publishedDigest) {
+      throw new Error(
+        `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
+      )
+    }
+
+    core.setOutput('package-url', packageURL.toString())
+    core.setOutput('package-manifest', JSON.stringify(manifest))
+    core.setOutput('package-manifest-sha', publishedDigest)
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
@@ -111,6 +119,8 @@ async function generateAttestation(
 ): Promise<attest.Attestation> {
   const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
+
+  core.info(`Generating attestation ${subjectName} for digest ${subjectDigest}`)
 
   return await attest.attestProvenance({
     subjectName,

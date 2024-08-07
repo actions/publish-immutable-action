@@ -1,5 +1,43 @@
-import { createActionPackageManifest } from '../src/oci-container'
+import { createActionPackageManifest, sha256Digest } from '../src/oci-container'
 import { FileMetadata } from '../src/fs-helper'
+
+describe('sha256Digest', () => {
+  it('calculates the SHA256 digest of the provided manifest', () => {
+    const date = new Date('2021-01-01T00:00:00Z')
+    const repo = 'test-org/test-repo'
+    const version = '1.2.3'
+    const repoId = '123'
+    const ownerId = '456'
+    const sourceCommit = 'abc'
+    const tarFile: FileMetadata = {
+      path: '/test/test/test.tar.gz',
+      sha256: 'tarSha',
+      size: 123
+    }
+    const zipFile: FileMetadata = {
+      path: '/test/test/test.zip',
+      sha256: 'zipSha',
+      size: 456
+    }
+
+    const manifest = createActionPackageManifest(
+      tarFile,
+      zipFile,
+      repo,
+      repoId,
+      ownerId,
+      sourceCommit,
+      version,
+      date
+    )
+
+    const digest = sha256Digest(manifest)
+    const expectedDigest =
+      'sha256:dd8537ef913cf87e25064a074973ed2c62699f1dbd74d0dd78e85d394a5758b5'
+
+    expect(digest).toEqual(expectedDigest)
+  })
+})
 
 describe('createActionPackageManifest', () => {
   it('creates a manifest containing the provided information', () => {

@@ -104732,7 +104732,7 @@ async function publishOCIArtifact(token, registry, repository, semver, zipFile, 
     const digest = await uploadManifest(JSON.stringify(manifest), manifestEndpoint, b64Token);
     return {
         packageURL: new URL(`${repository}:${semver}`, registry),
-        manifestDigest: digest
+        publishedDigest: digest
     };
 }
 exports.publishOCIArtifact = publishOCIArtifact;
@@ -104884,10 +104884,7 @@ async function run() {
         const archiveDir = fsHelper.createTempDir(options.runnerTempDir, 'archives');
         const archives = await fsHelper.createArchives(stagedActionFilesDir, archiveDir);
         const manifest = ociContainer.createActionPackageManifest(archives.tarFile, archives.zipFile, options.nameWithOwner, options.repositoryId, options.repositoryOwnerId, options.sha, semverTag.raw, new Date());
-        const { packageURL, manifestDigest } = await ghcr.publishOCIArtifact(options.token, options.containerRegistryUrl, options.nameWithOwner, semverTag.raw, archives.zipFile, archives.tarFile, manifest);
-        core.setOutput('package-url', packageURL.toString());
-        core.setOutput('package-manifest', JSON.stringify(manifest));
-        core.setOutput('package-manifest-sha', manifestDigest);
+        const manifestDigest = ociContainer.sha256Digest(manifest);
         // Attestations are not currently supported in GHES.
         if (!options.isEnterprise) {
             const attestation = await generateAttestation(manifestDigest, semverTag.raw, options);
@@ -104895,6 +104892,13 @@ async function run() {
                 core.setOutput('attestation-id', attestation.attestationID);
             }
         }
+        const { packageURL, publishedDigest } = await ghcr.publishOCIArtifact(options.token, options.containerRegistryUrl, options.nameWithOwner, semverTag.raw, archives.zipFile, archives.tarFile, manifest);
+        if (manifestDigest !== publishedDigest) {
+            throw new Error(`Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`);
+        }
+        core.setOutput('package-url', packageURL.toString());
+        core.setOutput('package-manifest', JSON.stringify(manifest));
+        core.setOutput('package-manifest-sha', publishedDigest);
     }
     catch (error) {
         // Fail the workflow run if an error occurs
@@ -104923,6 +104927,7 @@ function parseSemverTagFromRef(opts) {
 async function generateAttestation(manifestDigest, semverTag, options) {
     const subjectName = `${options.nameWithOwner}@${semverTag}`;
     const subjectDigest = removePrefix(manifestDigest, 'sha256:');
+    core.info(`Generating attestation ${subjectName} for digest ${subjectDigest}`);
     return await attest.attestProvenance({
         subjectName,
         subjectDigest: { sha256: subjectDigest },
@@ -104946,12 +104951,36 @@ function removePrefix(str, prefix) {
 /***/ }),
 
 /***/ 33207:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createActionPackageManifest = void 0;
+exports.sha256Digest = exports.createActionPackageManifest = void 0;
+const crypto = __importStar(__nccwpck_require__(6113));
 // Given a name and archive metadata, creates a manifest in the format expected by GHCR for an Actions Package.
 function createActionPackageManifest(tarFile, zipFile, repository, repoId, ownerId, sourceCommit, version, created) {
     const configLayer = createConfigLayer();
@@ -104978,6 +105007,17 @@ function createActionPackageManifest(tarFile, zipFile, repository, repoId, owner
     return manifest;
 }
 exports.createActionPackageManifest = createActionPackageManifest;
+// Calculate the SHA256 digest of a given manifest.
+// This should match the digest which the GitHub container registry calculates for this manifest.
+function sha256Digest(manifest) {
+    const data = JSON.stringify(manifest);
+    const buffer = Buffer.from(data, 'utf8');
+    const hash = crypto.createHash('sha256');
+    hash.update(buffer);
+    const hexHash = hash.digest('hex');
+    return `sha256:${hexHash}`;
+}
+exports.sha256Digest = sha256Digest;
 function createConfigLayer() {
     const configLayer = {
         mediaType: 'application/vnd.oci.empty.v1+json',
