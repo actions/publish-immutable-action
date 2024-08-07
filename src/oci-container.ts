@@ -1,4 +1,5 @@
 import { FileMetadata } from './fs-helper'
+import * as crypto from 'crypto'
 
 export interface Manifest {
   schemaVersion: number
@@ -51,6 +52,17 @@ export function createActionPackageManifest(
   }
 
   return manifest
+}
+
+// Calculate the SHA256 digest of a given manifest.
+// This should match the digest which the GitHub container registry calculates for this manifest.
+export function sha256Digest(manifest: Manifest): string {
+  const data = JSON.stringify(manifest)
+  const buffer = Buffer.from(data, 'utf8')
+  const hash = crypto.createHash('sha256')
+  hash.update(buffer)
+  const hexHash = hash.digest('hex')
+  return `sha256:${hexHash}`
 }
 
 function createConfigLayer(): Layer {
