@@ -104749,7 +104749,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         return;
     }
     if (checkExistsResponse.status !== 404) {
-        throw new Error(`Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status} ${checkExistsResponse.statusText}`);
+        throw new Error(await errorMessageForFailedRequest(`check blob (${layer.digest}) exists`, checkExistsResponse));
     }
     core.info(`Uploading layer ${layer.digest}.`);
     const initiateUploadResponse = await fetchWithDebug(uploadBlobEndpoint, {
@@ -104760,8 +104760,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         body: JSON.stringify(layer)
     });
     if (initiateUploadResponse.status !== 202) {
-        core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`);
-        throw new Error(`Unexpected response from POST upload ${initiateUploadResponse.status}`);
+        throw new Error(await errorMessageForFailedRequest(`initiate layer upload`, initiateUploadResponse));
     }
     const locationResponseHeader = initiateUploadResponse.headers.get('location');
     if (locationResponseHeader === undefined) {
@@ -104788,7 +104787,7 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         body: data
     });
     if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
+        throw new Error(await errorMessageForFailedRequest(`layer (${layer.digest}) upload`, putResponse));
     }
 }
 // Uploads the manifest and returns the digest returned by GHCR
@@ -104803,13 +104802,47 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
         body: manifestJSON
     });
     if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
+        throw new Error(await errorMessageForFailedRequest(`manifest upload`, putResponse));
     }
     const digestResponseHeader = putResponse.headers.get('docker-content-digest');
     if (digestResponseHeader === undefined || digestResponseHeader === null) {
         throw new Error(`No digest header in response from PUT manifest ${manifestEndpoint}`);
     }
     return digestResponseHeader;
+}
+// Generate an error message for a failed HTTP request
+async function errorMessageForFailedRequest(requestDescription, response) {
+    const bodyText = await response.text();
+    // Try to parse the body as JSON and extract the expected fields returned from GHCR
+    // Expected format: { "errors": [{"code": "BAD_REQUEST", "message": "Something went wrong."}] }
+    // If the body does not match the expected format, just return the whole response body
+    let errorString = `Response Body: ${bodyText}.`;
+    try {
+        const body = JSON.parse(bodyText);
+        const errors = body.errors;
+        if (Array.isArray(errors) &&
+            errors.length > 0 &&
+            errors.every(isGHCRError)) {
+            const errorMessages = errors.map((error) => {
+                return `${error.code} - ${error.message}`;
+            });
+            errorString = `Errors: ${errorMessages.join(', ')}`;
+        }
+    }
+    catch (error) {
+        // Ignore error
+    }
+    return `Unexpected ${response.status} ${response.statusText} response from ${requestDescription}. ${errorString}`;
+}
+// Runtime checks that parsed JSON object is in the expected format
+// {"code": "BAD_REQUEST", "message": "Something went wrong."}
+function isGHCRError(obj) {
+    return (typeof obj === 'object' &&
+        obj !== null &&
+        'code' in obj &&
+        typeof obj.code === 'string' &&
+        'message' in obj &&
+        typeof obj.message === 'string');
 }
 const fetchWithDebug = async (url, config = {}) => {
     core.debug(`Request from ${url} with config: ${JSON.stringify(config)}`);

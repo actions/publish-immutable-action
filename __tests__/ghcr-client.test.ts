@@ -25,14 +25,19 @@ const tarFile: fsHelper.FileMetadata = {
 const headMockNoExistingBlobs = (): object => {
   // Simulate none of the blobs existing currently
   return {
-    status: 404
+    text() {
+      return '{"errors": [{"code": "NOT_FOUND", "message": "blob not found."}]}'
+    },
+    status: 404,
+    statusText: 'Not Found'
   }
 }
 
 const headMockAllExistingBlobs = (): object => {
   // Simulate all of the blobs existing currently
   return {
-    status: 200
+    status: 200,
+    statusText: 'OK'
   }
 }
 
@@ -42,19 +47,29 @@ const headMockSomeExistingBlobs = (): object => {
   // report one as existing
   if (count === 1) {
     return {
-      status: 200
+      status: 200,
+      statusText: 'OK'
     }
   } else {
     // report all others are missing
     return {
-      status: 404
+      text() {
+        return '{"errors": [{"code": "NOT_FOUND", "message": "blob not found."}]}'
+      },
+      status: 404,
+      statusText: 'Not Found'
     }
   }
 }
 
 const headMockFailure = (): object => {
   return {
-    status: 503
+    text() {
+      // In this case we'll simulate a response which does not use the expected error format
+      return '503 Service Unavailable'
+    },
+    status: 503,
+    statusText: 'Service Unavailable'
   }
 }
 
@@ -75,7 +90,12 @@ const postMockSuccessfulIniationForAllBlobs = (): object => {
 const postMockFailure = (): object => {
   // Simulate failed initiation of uploads
   return {
-    status: 503
+    text() {
+      // In this case we'll simulate a response which does not use the expected error format
+      return '503 Service Unavailable'
+    },
+    status: 503,
+    statusText: 'Service Unavailable'
   }
 }
 
@@ -110,7 +130,11 @@ const putMockSuccessfulBlobUpload = (url: string): object => {
 const putMockFailure = (): object => {
   // Simulate fails upload of all blobs & manifest
   return {
-    status: 500
+    text() {
+      return '{"errors": [{"code": "BAD_REQUEST", "message": "tag already exists."}]}'
+    },
+    status: 400,
+    statusText: 'Bad Request'
   }
 }
 
@@ -118,7 +142,11 @@ const putMockFailureManifestUpload = (url: string): object => {
   // Simulate unsuccessful upload of all blobs & then the manifest
   if (url.includes('manifest')) {
     return {
-      status: 500
+      text() {
+        return '{"errors": [{"code": "BAD_REQUEST", "message": "tag already exists."}]}'
+      },
+      status: 400,
+      statusText: 'Bad Request'
     }
   }
   return {
@@ -325,7 +353,9 @@ describe('publishOCIArtifact', () => {
         tarFile,
         testManifest
       )
-    ).rejects.toThrow(/^Unexpected response from blob check for layer/)
+    ).rejects.toThrow(
+      /^Unexpected 503 Service Unavailable response from check blob/
+    )
   })
 
   it('throws an error if initiating layer upload fails', async () => {
@@ -344,7 +374,9 @@ describe('publishOCIArtifact', () => {
         tarFile,
         testManifest
       )
-    ).rejects.toThrow('Unexpected response from POST upload 503')
+    ).rejects.toThrow(
+      'Unexpected 503 Service Unavailable response from initiate layer upload. Response Body: 503 Service Unavailable.'
+    )
   })
 
   it('throws an error if the upload endpoint does not return a location', async () => {
@@ -388,7 +420,7 @@ describe('publishOCIArtifact', () => {
         tarFile,
         testManifest
       )
-    ).rejects.toThrow(/^Unexpected response from PUT upload 500/)
+    ).rejects.toThrow(/^Unexpected 400 Bad Request response from layer/)
   })
 
   it('throws an error if a manifest upload fails', async () => {
@@ -413,7 +445,9 @@ describe('publishOCIArtifact', () => {
         tarFile,
         testManifest
       )
-    ).rejects.toThrow(/^Unexpected response from PUT manifest 500/)
+    ).rejects.toThrow(
+      'Unexpected 400 Bad Request response from manifest upload. Errors: BAD_REQUEST - tag already exists.'
+    )
   })
 
   it('throws an error if reading one of the files fails', async () => {
