@@ -107,8 +107,10 @@ async function uploadLayer(
   }
 
   if (checkExistsResponse.status !== 404) {
+    const responseBody = await checkExistsResponse.text()
+
     throw new Error(
-      `Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status} ${checkExistsResponse.statusText}`
+      `Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status}. Response Body: ${responseBody}.`
     )
   }
 
@@ -123,11 +125,13 @@ async function uploadLayer(
   })
 
   if (initiateUploadResponse.status !== 202) {
+    const responseBody = await initiateUploadResponse.text()
+
     core.error(
-      `Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`
+      `Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}. Response Body: ${responseBody}.`
     )
     throw new Error(
-      `Unexpected response from POST upload ${initiateUploadResponse.status}`
+      `Unexpected response from POST upload ${initiateUploadResponse.status}. Response Body: ${responseBody}.`
     )
   }
 
@@ -161,8 +165,10 @@ async function uploadLayer(
   })
 
   if (putResponse.status !== 201) {
+    const responseBody = await putResponse.text()
+
     throw new Error(
-      `Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`
+      `Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}. Response Body: ${responseBody}.`
     )
   }
 }
@@ -185,8 +191,10 @@ async function uploadManifest(
   })
 
   if (putResponse.status !== 201) {
+    const responseBody = await putResponse.text()
+
     throw new Error(
-      `Unexpected response from PUT manifest ${putResponse.status}`
+      `Unexpected response from PUT manifest ${putResponse.status}. Response Body: ${responseBody}.`
     )
   }
 
