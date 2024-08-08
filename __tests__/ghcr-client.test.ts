@@ -25,6 +25,9 @@ const tarFile: fsHelper.FileMetadata = {
 const headMockNoExistingBlobs = (): object => {
   // Simulate none of the blobs existing currently
   return {
+    text() {
+      return 'Not Found'
+    },
     status: 404
   }
 }
@@ -47,6 +50,9 @@ const headMockSomeExistingBlobs = (): object => {
   } else {
     // report all others are missing
     return {
+      text() {
+        return 'Not Found'
+      },
       status: 404
     }
   }
@@ -54,6 +60,9 @@ const headMockSomeExistingBlobs = (): object => {
 
 const headMockFailure = (): object => {
   return {
+    text() {
+      return 'Failed the head request'
+    },
     status: 503
   }
 }
@@ -75,6 +84,9 @@ const postMockSuccessfulIniationForAllBlobs = (): object => {
 const postMockFailure = (): object => {
   // Simulate failed initiation of uploads
   return {
+    text() {
+      return 'Failed the post request'
+    },
     status: 503
   }
 }
@@ -110,6 +122,9 @@ const putMockSuccessfulBlobUpload = (url: string): object => {
 const putMockFailure = (): object => {
   // Simulate fails upload of all blobs & manifest
   return {
+    text() {
+      return 'Failed the put request'
+    },
     status: 500
   }
 }
@@ -118,6 +133,9 @@ const putMockFailureManifestUpload = (url: string): object => {
   // Simulate unsuccessful upload of all blobs & then the manifest
   if (url.includes('manifest')) {
     return {
+      text() {
+        return 'Failed the put request'
+      },
       status: 500
     }
   }

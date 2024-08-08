@@ -104749,7 +104749,8 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         return;
     }
     if (checkExistsResponse.status !== 404) {
-        throw new Error(`Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status} ${checkExistsResponse.statusText}`);
+        const responseBody = await checkExistsResponse.text();
+        throw new Error(`Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status}. Response Body: ${responseBody}.`);
     }
     core.info(`Uploading layer ${layer.digest}.`);
     const initiateUploadResponse = await fetchWithDebug(uploadBlobEndpoint, {
@@ -104760,8 +104761,9 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         body: JSON.stringify(layer)
     });
     if (initiateUploadResponse.status !== 202) {
-        core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}`);
-        throw new Error(`Unexpected response from POST upload ${initiateUploadResponse.status}`);
+        const responseBody = await initiateUploadResponse.text();
+        core.error(`Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}. Response Body: ${responseBody}.`);
+        throw new Error(`Unexpected response from POST upload ${initiateUploadResponse.status}. Response Body: ${responseBody}.`);
     }
     const locationResponseHeader = initiateUploadResponse.headers.get('location');
     if (locationResponseHeader === undefined) {
@@ -104788,7 +104790,8 @@ async function uploadLayer(layer, file, registryURL, checkBlobEndpoint, uploadBl
         body: data
     });
     if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}`);
+        const responseBody = await putResponse.text();
+        throw new Error(`Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}. Response Body: ${responseBody}.`);
     }
 }
 // Uploads the manifest and returns the digest returned by GHCR
@@ -104803,7 +104806,8 @@ async function uploadManifest(manifestJSON, manifestEndpoint, b64Token) {
         body: manifestJSON
     });
     if (putResponse.status !== 201) {
-        throw new Error(`Unexpected response from PUT manifest ${putResponse.status}`);
+        const responseBody = await putResponse.text();
+        throw new Error(`Unexpected response from PUT manifest ${putResponse.status}. Response Body: ${responseBody}.`);
     }
     const digestResponseHeader = putResponse.headers.get('docker-content-digest');
     if (digestResponseHeader === undefined || digestResponseHeader === null) {
