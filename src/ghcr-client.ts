@@ -107,10 +107,11 @@ async function uploadLayer(
   }
 
   if (checkExistsResponse.status !== 404) {
-    const responseBody = await checkExistsResponse.text()
-
     throw new Error(
-      `Unexpected response from blob check for layer ${layer.digest}: ${checkExistsResponse.status}. Response Body: ${responseBody}.`
+      await errorMessageForFailedRequest(
+        `check blob (${layer.digest}) exists`,
+        checkExistsResponse
+      )
     )
   }
 
@@ -125,13 +126,11 @@ async function uploadLayer(
   })
 
   if (initiateUploadResponse.status !== 202) {
-    const responseBody = await initiateUploadResponse.text()
-
-    core.error(
-      `Unexpected response from upload post ${uploadBlobEndpoint}: ${initiateUploadResponse.status}. Response Body: ${responseBody}.`
-    )
     throw new Error(
-      `Unexpected response from POST upload ${initiateUploadResponse.status}. Response Body: ${responseBody}.`
+      await errorMessageForFailedRequest(
+        `initiate layer upload`,
+        initiateUploadResponse
+      )
     )
   }
 
@@ -165,10 +164,11 @@ async function uploadLayer(
   })
 
   if (putResponse.status !== 201) {
-    const responseBody = await putResponse.text()
-
     throw new Error(
-      `Unexpected response from PUT upload ${putResponse.status} for layer ${layer.digest}. Response Body: ${responseBody}.`
+      await errorMessageForFailedRequest(
+        `layer (${layer.digest}) upload`,
+        putResponse
+      )
     )
   }
 }
@@ -191,10 +191,8 @@ async function uploadManifest(
   })
 
   if (putResponse.status !== 201) {
-    const responseBody = await putResponse.text()
-
     throw new Error(
-      `Unexpected response from PUT manifest ${putResponse.status}. Response Body: ${responseBody}.`
+      await errorMessageForFailedRequest(`manifest upload`, putResponse)
     )
   }
 
@@ -206,6 +204,57 @@ async function uploadManifest(
   }
 
   return digestResponseHeader
+}
+
+interface ghcrError {
+  code: string
+  message: string
+}
+
+// Generate an error message for a failed HTTP request
+async function errorMessageForFailedRequest(
+  requestDescription: string,
+  response: Response
+): Promise<string> {
+  const bodyText = await response.text()
+
+  // Try to parse the body as JSON and extract the expected fields returned from GHCR
+  // Expected format: { "errors": [{"code": "BAD_REQUEST", "message": "Something went wrong."}] }
+  // If the body does not match the expected format, just return the whole response body
+  let errorString = `Response Body: ${bodyText}.`
+
+  try {
+    const body = JSON.parse(bodyText)
+    const errors = body.errors
+
+    if (
+      Array.isArray(errors) &&
+      errors.length > 0 &&
+      errors.every(isGHCRError)
+    ) {
+      const errorMessages = errors.map((error: ghcrError) => {
+        return `${error.code} - ${error.message}`
+      })
+      errorString = `Errors: ${errorMessages.join(', ')}`
+    }
+  } catch (error) {
+    // Ignore error
+  }
+
+  return `Unexpected ${response.status} ${response.statusText} response from ${requestDescription}. ${errorString}`
+}
+
+// Runtime checks that parsed JSON object is in the expected format
+// {"code": "BAD_REQUEST", "message": "Something went wrong."}
+function isGHCRError(obj: unknown): boolean {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'code' in obj &&
+    typeof (obj as { code: unknown }).code === 'string' &&
+    'message' in obj &&
+    typeof (obj as { message: unknown }).message === 'string'
+  )
 }
 
 const fetchWithDebug = async (
