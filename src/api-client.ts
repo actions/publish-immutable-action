@@ -34,10 +34,18 @@ export async function getRepositoryMetadata(
 }
 
 export async function getContainerRegistryURL(
-  githubAPIURL: string
+  githubAPIURL: string,
+  token: string
 ): Promise<URL> {
   const response = await fetch(
-    `${githubAPIURL}/packages/container-registry-url`
+    `${githubAPIURL}/packages/container-registry-url`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json'
+      }
+    }
   )
   if (!response.ok) {
     throw new Error(

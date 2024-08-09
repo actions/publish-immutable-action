@@ -104365,8 +104365,14 @@ async function getRepositoryMetadata(githubAPIURL, repository, token) {
     };
 }
 exports.getRepositoryMetadata = getRepositoryMetadata;
-async function getContainerRegistryURL(githubAPIURL) {
-    const response = await fetch(`${githubAPIURL}/packages/container-registry-url`);
+async function getContainerRegistryURL(githubAPIURL, token) {
+    const response = await fetch(`${githubAPIURL}/packages/container-registry-url`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json'
+        }
+    });
     if (!response.ok) {
         throw new Error(`Failed to fetch container registry url due to bad status code: ${response.status}`);
     }
@@ -104464,7 +104470,7 @@ async function resolvePublishActionOptions() {
         throw new Error(`Could not find GITHUB_REPOSITORY_OWNER_ID.`);
     }
     // Required Values fetched from the GitHub API
-    const containerRegistryUrl = await apiClient.getContainerRegistryURL(apiBaseUrl);
+    const containerRegistryUrl = await apiClient.getContainerRegistryURL(apiBaseUrl, token);
     const isEnterprise = !githubServerUrl.includes('https://github.com') &&
         !githubServerUrl.endsWith('.ghe.com');
     const repoMetadata = await apiClient.getRepositoryMetadata(apiBaseUrl, nameWithOwner, token);
