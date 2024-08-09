@@ -4,6 +4,7 @@ import {
 } from '../src/api-client'
 
 const url = 'https://registry.example.com'
+const test_token = 'test_token'
 
 let fetchMock: jest.SpyInstance
 
@@ -26,12 +27,23 @@ describe('getRepositoryMetadata', () => {
         })
       )
     )
-    const result = await getRepositoryMetadata(url, 'repository', 'token')
+    const result = await getRepositoryMetadata(url, 'repository', test_token)
     expect(result).toEqual({
       repoId: '123',
       ownerId: '456',
       visibility: 'public'
     })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://registry.example.com/repos/repository',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${test_token}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      }
+    )
   })
 
   it('throws an error when the fetch errors', async () => {
@@ -67,18 +79,32 @@ describe('getContainerRegistryURL', () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ url: 'https://registry.example.com' }))
     )
-    const result = await getContainerRegistryURL(url)
+    const result = await getContainerRegistryURL(url, test_token)
+
     expect(result).toEqual(new URL('https://registry.example.com'))
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://registry.example.com/packages/container-registry-url',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${test_token}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      }
+    )
   })
 
   it('throws an error when the fetch errors', async () => {
     fetchMock.mockRejectedValueOnce(new Error('API is down'))
-    await expect(getContainerRegistryURL(url)).rejects.toThrow('API is down')
+    await expect(getContainerRegistryURL(url, test_token)).rejects.toThrow(
+      'API is down'
+    )
   })
 
   it('throws an error when the response status is not ok', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }))
-    await expect(getContainerRegistryURL(url)).rejects.toThrow(
+    await expect(getContainerRegistryURL(url, test_token)).rejects.toThrow(
       'Failed to fetch container registry url due to bad status code: 500'
     )
   })
@@ -87,7 +113,7 @@ describe('getContainerRegistryURL', () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ wrong: 'format' }))
     )
-    await expect(getContainerRegistryURL(url)).rejects.toThrow(
+    await expect(getContainerRegistryURL(url, test_token)).rejects.toThrow(
       'Failed to fetch repository metadata: unexpected response format'
     )
   })

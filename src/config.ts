@@ -92,8 +92,10 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
   }
 
   // Required Values fetched from the GitHub API
-  const containerRegistryUrl: URL =
-    await apiClient.getContainerRegistryURL(apiBaseUrl)
+  const containerRegistryUrl: URL = await apiClient.getContainerRegistryURL(
+    apiBaseUrl,
+    token
+  )
 
   const isEnterprise =
     !githubServerUrl.includes('https://github.com') &&
