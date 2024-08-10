@@ -1,18 +1,20 @@
-name: 'release'
-on: # rebuild any PRs and main branch changes
+# Package and publish the action when a new release is created
+# Since this is the publishing action itself, we can use the current checkout as the action
+name: 'Publish Immutable Action Version'
+on:
   release:
     types: [created]
 permissions:
   id-token: write
-  contents: write
+  attestations: write
   packages: write
 jobs:
-  package-and-publish: 
+  package-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checking out!
+      - name: Check out repository
         uses: actions/checkout@v4
-      - name: Publish action package
+      - name: Publish Immutable Action Version
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
