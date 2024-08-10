@@ -6,7 +6,7 @@ on:
     types: [created]
 permissions:
   id-token: write
-  attestations: write
+  attestations: write # noqa: [permissions]
   packages: write
 jobs:
   package-and-publish:
