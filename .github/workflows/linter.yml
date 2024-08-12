@@ -22,6 +22,9 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
+        # this is necessary based on https://github.com/super-linter/super-linter?tab=readme-ov-file#get-started
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         id: setup-node
@@ -36,10 +39,10 @@ jobs:
 
       - name: Lint Code Base
         id: super-linter
-        uses: super-linter/super-linter/slim@v5
+        uses: super-linter/super-linter/slim@v6
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TYPESCRIPT_DEFAULT_STYLE: prettier
+          VALIDATE_TYPESCRIPT_STANDARD: false
           VALIDATE_JSCPD: false
           FILTER_REGEX_EXCLUDE: .*/licenses\.txt$
