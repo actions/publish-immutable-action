@@ -104972,11 +104972,8 @@ async function generateAttestation(manifestDigest, semverTag, options) {
         subjectDigest: { sha256: subjectDigest },
         token: options.token,
         sigstore: 'github',
-        // Attestation storage is only supported for public repositories or repositories which belong to a GitHub Enterprise Cloud account.
-        // See: https://github.com/actions/toolkit/tree/main/packages/attest#storage
-        // Since internal repos can only be owned by Enterprises, we'll use this visibility as a proxy for "owned by a GitHub Enterprise Cloud account."
-        // See: https://docs.github.com/en/enterprise-cloud@latest/repositories/creating-and-managing-repositories/about-repositories#about-internal-repositories
-        skipWrite: options.repositoryVisibility === 'private'
+        // Always store the attestation using the GitHub Attestations API
+        skipWrite: false
     });
 }
 function removePrefix(str, prefix) {
