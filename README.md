@@ -43,10 +43,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      attestations: write
       id-token: write
       packages: write
-      contents: write
-      actions: read
     steps:
     - name: Check out repo
       uses: actions/checkout@v4
