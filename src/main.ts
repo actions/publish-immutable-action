@@ -128,7 +128,9 @@ async function generateAttestation(
     token: options.token,
     sigstore: 'github',
     // Always store the attestation using the GitHub Attestations API
-    skipWrite: false
+    skipWrite: false,
+    // Identify the attestation to our API as an Immutable Action
+    headers: { 'X-GitHub-Publish-Action': subjectName }
   })
 }
 
