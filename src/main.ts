@@ -53,6 +53,23 @@ export async function run(): Promise<void> {
 
     const manifestDigest = ociContainer.sha256Digest(manifest)
 
+    // Attestations are not supported in GHES.
+    if (!options.isEnterprise) {
+      const attestation = await uploadAttestation(
+        manifestDigest,
+        semverTag.raw,
+        options
+      )
+      if (attestation.digest !== undefined) {
+        core.info(`Uploaded attestation ${attestation.digest}`)
+        core.setOutput('attestation-manifest-sha', attestation.digest)
+      }
+      if (attestation.urls !== undefined && attestation.urls.length > 0) {
+        core.info(`Attestation URL: ${attestation.digest}`)
+        core.setOutput('attestation-url', attestation.urls[0])
+      }
+    }
+
     const { packageURL, publishedDigest } = await ghcr.publishOCIArtifact(
       options.token,
       options.containerRegistryUrl,
@@ -67,23 +84,6 @@ export async function run(): Promise<void> {
       throw new Error(
         `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
       )
-    }
-
-    // Attestations are not currently supported in GHES.
-    if (!options.isEnterprise) {
-      const attestation = await uploadAttestation(
-        publishedDigest,
-        semverTag.raw,
-        options
-      )
-      if (attestation.digest !== undefined) {
-        core.info(`Uploaded attestation ${attestation.digest}`)
-        core.setOutput('attestation-manifest-sha', attestation.digest)
-      }
-      if (attestation.urls !== undefined && attestation.urls.length > 0) {
-        core.info(`Attestation URL: ${attestation.digest}`)
-        core.setOutput('attestation-url', attestation.urls[0])
-      }
     }
 
     core.setOutput('package-url', packageURL.toString())
