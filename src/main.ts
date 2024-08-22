@@ -53,20 +53,6 @@ export async function run(): Promise<void> {
 
     const manifestDigest = ociContainer.sha256Digest(manifest)
 
-    const publishedDigest = await publishImmutableActionVersion(
-      options,
-      semverTag.raw,
-      archives.zipFile,
-      archives.tarFile,
-      manifest
-    )
-
-    if (manifestDigest !== publishedDigest) {
-      throw new Error(
-        `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
-      )
-    }
-
     // Attestations are not supported in GHES.
     if (!options.isEnterprise) {
       const { bundle, bundleDigest } = await generateAttestation(
@@ -107,6 +93,20 @@ export async function run(): Promise<void> {
         core.info(`Uploaded referrer index ${referrerIndexSHA}`)
         core.setOutput('referrer-index-manifest-sha', referrerIndexSHA)
       }
+    }
+
+    const publishedDigest = await publishImmutableActionVersion(
+      options,
+      semverTag.raw,
+      archives.zipFile,
+      archives.tarFile,
+      manifest
+    )
+
+    if (manifestDigest !== publishedDigest) {
+      throw new Error(
+        `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
+      )
     }
 
     core.setOutput('package-manifest-sha', publishedDigest)
