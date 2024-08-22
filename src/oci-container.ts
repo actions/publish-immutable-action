@@ -9,14 +9,14 @@ const actionsPackageTarLayerMediaType =
 const actionsPackageZipLayerMediaType =
   'application/vnd.github.actions.package.layer.v1.zip'
 const sigstoreBundleMediaType = 'application/vnd.dev.sigstore.bundle.v0.3+json'
-const ociEmptyMediaType = 'application/vnd.oci.empty.v1+json'
 
 const actionPackageAnnotationValue = 'actions_oci_pkg'
 const actionPackageAttestationAnnotationValue = 'actions_oci_pkg_attestation'
 const actionPackageReferrerTagAnnotationValue = 'actions_oci_pkg_referrer_tag'
 
-const emptyConfigSize = 2
-const emptyConfigSha =
+export const ociEmptyMediaType = 'application/vnd.oci.empty.v1+json'
+export const emptyConfigSize = 2
+export const emptyConfigSha =
   'sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'
 
 export interface OCIImageManifest {

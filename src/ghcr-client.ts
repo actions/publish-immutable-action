@@ -1,70 +1,67 @@
 import * as core from '@actions/core'
-import { FileMetadata } from './fs-helper'
 import * as ociContainer from './oci-container'
-import * as fsHelper from './fs-helper'
 
-// Publish the OCI artifact and return the URL where it can be downloaded
-export async function publishOCIArtifact(
+export async function uploadOCIImageManifest(
   token: string,
   registry: URL,
   repository: string,
-  semver: string,
-  zipFile: FileMetadata,
-  tarFile: FileMetadata,
-  manifest: ociContainer.OCIImageManifest
-): Promise<{ packageURL: URL; publishedDigest: string }> {
+  manifest: ociContainer.OCIImageManifest,
+  blobs: Map<string, Buffer>,
+  tag?: string
+): Promise<string> {
   const b64Token = Buffer.from(token).toString('base64')
+  const manifestSHA = ociContainer.sha256Digest(manifest)
 
-  core.info(
-    `Creating GHCR package for release with semver:${semver} with path:"${zipFile.path}" and "${tarFile.path}".`
-  )
+  if (tag) {
+    core.info(
+      `Uploading manifest ${manifestSHA} with tag ${tag} to ${repository}.`
+    )
+  } else {
+    core.info(`Uploading manifest ${manifestSHA} to ${repository}.`)
+  }
 
   const layerUploads: Promise<void>[] = manifest.layers.map(async layer => {
-    switch (layer.mediaType) {
-      case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
-        return uploadLayer(
-          layer,
-          fsHelper.readFileContents(zipFile.path),
-          registry,
-          repository,
-          b64Token
-        )
-      case 'application/vnd.github.actions.package.layer.v1.zip':
-        return uploadLayer(
-          layer,
-          fsHelper.readFileContents(zipFile.path),
-          registry,
-          repository,
-          b64Token
-        )
-      case 'application/vnd.oci.empty.v1+json':
-        return uploadLayer(
-          layer,
-          Buffer.from('{}'),
-          registry,
-          repository,
-          b64Token
-        )
-      default:
-        throw new Error(`Unknown media type ${layer.mediaType}`)
+    const blob = blobs.get(layer.digest)
+    if (!blob) {
+      throw new Error(`Blob for layer ${layer.digest} not found`)
     }
+    return uploadLayer(layer, blob, registry, repository, b64Token)
   })
 
   await Promise.all(layerUploads)
 
-  const digest = await uploadManifest(
+  return await uploadManifest(
     JSON.stringify(manifest),
     manifest.mediaType,
     registry,
     repository,
-    semver,
+    tag || manifestSHA,
     b64Token
   )
+}
 
-  return {
-    packageURL: new URL(`${repository}:${semver}`, registry),
-    publishedDigest: digest
-  }
+export async function uploadOCIIndexManifest(
+  token: string,
+  registry: URL,
+  repository: string,
+  manifest: ociContainer.OCIIndexManifest,
+  tag: string
+): Promise<string> {
+  const b64Token = Buffer.from(token).toString('base64')
+  const manifestSHA = ociContainer.sha256Digest(manifest)
+
+  core.info(
+    `Uploading index manifest ${manifestSHA} with tag ${tag} to ${repository}.`
+  )
+
+  return await uploadManifest(
+    JSON.stringify(manifest),
+    manifest.mediaType,
+    registry,
+    repository,
+    tag,
+    b64Token
+  )
 }
 
 async function uploadLayer(

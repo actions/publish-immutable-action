@@ -5,7 +5,7 @@ import * as ociContainer from './oci-container'
 import * as ghcr from './ghcr-client'
 import * as attest from '@actions/attest'
 import * as cfg from './config'
-import { attachArtifactToImage, Descriptor } from '@sigstore/oci'
+import * as crypto from 'crypto'
 
 /**
  * The main function for the action.
@@ -53,27 +53,8 @@ export async function run(): Promise<void> {
 
     const manifestDigest = ociContainer.sha256Digest(manifest)
 
-    // Attestations are not supported in GHES.
-    if (!options.isEnterprise) {
-      const attestation = await uploadAttestation(
-        manifestDigest,
-        semverTag.raw,
-        options
-      )
-      if (attestation.digest !== undefined) {
-        core.info(`Uploaded attestation ${attestation.digest}`)
-        core.setOutput('attestation-manifest-sha', attestation.digest)
-      }
-      if (attestation.urls !== undefined && attestation.urls.length > 0) {
-        core.info(`Attestation URL: ${attestation.digest}`)
-        core.setOutput('attestation-url', attestation.urls[0])
-      }
-    }
-
-    const { packageURL, publishedDigest } = await ghcr.publishOCIArtifact(
-      options.token,
-      options.containerRegistryUrl,
-      options.nameWithOwner,
+    const publishedDigest = await publishImmutableActionVersion(
+      options,
       semverTag.raw,
       archives.zipFile,
       archives.tarFile,
@@ -86,8 +67,48 @@ export async function run(): Promise<void> {
       )
     }
 
-    core.setOutput('package-url', packageURL.toString())
-    core.setOutput('package-manifest', JSON.stringify(manifest))
+    // Attestations are not supported in GHES.
+    if (!options.isEnterprise) {
+      const { bundle, bundleDigest } = await generateAttestation(
+        manifestDigest,
+        semverTag.raw,
+        options
+      )
+
+      const attestationCreated = new Date()
+      const attestationManifest =
+        ociContainer.createSigstoreAttestationManifest(
+          bundle.length,
+          bundleDigest,
+          ociContainer.sizeInBytes(manifest),
+          manifestDigest,
+          attestationCreated
+        )
+      const referrerIndexManifest = ociContainer.createReferrerTagManifest(
+        ociContainer.sha256Digest(attestationManifest),
+        ociContainer.sizeInBytes(attestationManifest),
+        attestationCreated
+      )
+
+      const { attestationSHA, referrerIndexSHA } = await publishAttestation(
+        options,
+        bundle,
+        bundleDigest,
+        manifest,
+        attestationManifest,
+        referrerIndexManifest
+      )
+
+      if (attestationSHA !== undefined) {
+        core.info(`Uploaded attestation ${attestationSHA}`)
+        core.setOutput('attestation-manifest-sha', attestationSHA)
+      }
+      if (referrerIndexSHA !== undefined) {
+        core.info(`Uploaded referrer index ${referrerIndexSHA}`)
+        core.setOutput('referrer-index-manifest-sha', referrerIndexSHA)
+      }
+    }
+
     core.setOutput('package-manifest-sha', publishedDigest)
   } catch (error) {
     // Fail the workflow run if an error occurs
@@ -116,17 +137,94 @@ function parseSemverTagFromRef(opts: cfg.PublishActionOptions): semver.SemVer {
   return semverTag
 }
 
-// Generate an attestation using the actions toolkit
-// Subject name will contain the repo/package name and the tag name
-async function uploadAttestation(
+async function publishImmutableActionVersion(
+  options: cfg.PublishActionOptions,
+  semverTag: string,
+  zipFile: fsHelper.FileMetadata,
+  tarFile: fsHelper.FileMetadata,
+  manifest: ociContainer.OCIImageManifest
+): Promise<string> {
+  const manifestDigest = ociContainer.sha256Digest(manifest)
+
+  core.info(
+    `Creating GHCR package ${manifestDigest} for release with semver: ${semver}.`
+  )
+
+  const files = new Map<string, Buffer>()
+  files.set(zipFile.sha256, fsHelper.readFileContents(zipFile.path))
+  files.set(tarFile.sha256, fsHelper.readFileContents(tarFile.path))
+  files.set(ociContainer.emptyConfigSha, Buffer.from('{}'))
+
+  return await ghcr.uploadOCIImageManifest(
+    options.token,
+    options.containerRegistryUrl,
+    options.nameWithOwner,
+    manifest,
+    files,
+    semverTag
+  )
+}
+
+async function publishAttestation(
+  options: cfg.PublishActionOptions,
+  bundle: Buffer,
+  bundleDigest: string,
+  subjectManifest: ociContainer.OCIImageManifest,
+  attestationManifest: ociContainer.OCIImageManifest,
+  referrerIndexManifest: ociContainer.OCIIndexManifest
+): Promise<{
+  attestationSHA: string
+  referrerIndexSHA: string
+}> {
+  const attestationManifestDigest =
+    ociContainer.sha256Digest(attestationManifest)
+  const subjectManifestDigest = ociContainer.sha256Digest(subjectManifest)
+  const referrerIndexManifestDigest = ociContainer.sha256Digest(
+    referrerIndexManifest
+  )
+
+  core.info(
+    `Publishing attestation ${attestationManifestDigest} for subject ${subjectManifestDigest}.`
+  )
+
+  const files = new Map<string, Buffer>()
+  files.set(ociContainer.emptyConfigSha, Buffer.from('{}'))
+  files.set(bundleDigest, bundle)
+
+  const attestationSHA = await ghcr.uploadOCIImageManifest(
+    options.token,
+    options.containerRegistryUrl,
+    options.nameWithOwner,
+    attestationManifest,
+    files
+  )
+
+  // The referrer index is tagged with the subject's digest in format sha256-<digest>
+  const referrerTag = subjectManifestDigest.replace(':', '-')
+
+  core.info(
+    `Publishing referrer index ${referrerIndexManifestDigest} with tag ${referrerTag} for attestation ${attestationManifestDigest} and subject ${subjectManifestDigest}.`
+  )
+
+  const referrerIndexSHA = await ghcr.uploadOCIIndexManifest(
+    options.token,
+    options.containerRegistryUrl,
+    options.nameWithOwner,
+    referrerIndexManifest,
+    referrerTag
+  )
+
+  return { attestationSHA, referrerIndexSHA }
+}
+
+async function generateAttestation(
   manifestDigest: string,
   semverTag: string,
   options: cfg.PublishActionOptions
-): Promise<Descriptor> {
-  const OCI_TIMEOUT = 30000
-  const OCI_RETRY = 3
-  const PREDICATE_TYPE = 'https://slsa.dev/provenance/v1'
-
+): Promise<{
+  bundle: Buffer
+  bundleDigest: string
+}> {
   const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
 
@@ -140,27 +238,13 @@ async function uploadAttestation(
     skipWrite: true // We will upload attestations to GHCR
   })
 
-  // Upload the attestation to the GitHub Container Registry
-  const credentials = { username: 'token', password: options.token }
+  const bundleArtifact = Buffer.from(JSON.stringify(attestation.bundle))
 
-  return await attachArtifactToImage({
-    credentials,
-    imageName: `${options.containerRegistryUrl.host}/${options.nameWithOwner}`,
-    imageDigest: manifestDigest,
-    artifact: Buffer.from(JSON.stringify(attestation.bundle)),
-    mediaType: attestation.bundle.mediaType,
-    annotations: {
-      'dev.sigstore.bundle.content': 'dsse-envelope',
-      'dev.sigstore.bundle.predicateType': PREDICATE_TYPE,
-      'com.github.package.type': 'actions_oci_pkg_attestation'
-    },
-    fetchOpts: {
-      timeout: OCI_TIMEOUT,
-      retry: OCI_RETRY,
-      proxy: undefined,
-      noProxy: undefined
-    }
-  })
+  const hash = crypto.createHash('sha256')
+  hash.update(bundleArtifact)
+  const bundleSHA = hash.digest('hex')
+
+  return { bundle: bundleArtifact, bundleDigest: `sha256:${bundleSHA}` }
 }
 
 function removePrefix(str: string, prefix: string): string {
