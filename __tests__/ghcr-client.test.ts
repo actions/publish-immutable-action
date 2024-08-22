@@ -182,7 +182,7 @@ function configureFetchMock(
   )
 }
 
-const testManifest: ociContainer.Manifest = {
+const testManifest: ociContainer.OCIImageManifest = {
   schemaVersion: 2,
   mediaType: 'application/vnd.oci.image.manifest.v1+json',
   artifactType: 'application/vnd.oci.image.manifest.v1+json',
@@ -526,8 +526,10 @@ function validateRequestConfig(url: string, config: any): void {
   }
 }
 
-function cloneLayers(layers: ociContainer.Layer[]): ociContainer.Layer[] {
-  const result: ociContainer.Layer[] = []
+function cloneLayers(
+  layers: ociContainer.Descriptor[]
+): ociContainer.Descriptor[] {
+  const result: ociContainer.Descriptor[] = []
   for (const layer of layers) {
     result.push({ ...layer }) // this is _NOT_ a deep clone
   }

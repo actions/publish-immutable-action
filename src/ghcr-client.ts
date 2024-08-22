@@ -11,7 +11,7 @@ export async function publishOCIArtifact(
   semver: string,
   zipFile: FileMetadata,
   tarFile: FileMetadata,
-  manifest: ociContainer.Manifest
+  manifest: ociContainer.OCIImageManifest
 ): Promise<{ packageURL: URL; publishedDigest: string }> {
   const b64Token = Buffer.from(token).toString('base64')
 
@@ -81,7 +81,7 @@ export async function publishOCIArtifact(
 }
 
 async function uploadLayer(
-  layer: ociContainer.Layer,
+  layer: ociContainer.Descriptor,
   file: FileMetadata,
   registryURL: URL,
   checkBlobEndpoint: string,
