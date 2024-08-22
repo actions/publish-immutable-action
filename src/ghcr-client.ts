@@ -15,19 +15,6 @@ export async function publishOCIArtifact(
 ): Promise<{ packageURL: URL; publishedDigest: string }> {
   const b64Token = Buffer.from(token).toString('base64')
 
-  const checkBlobEndpoint = new URL(
-    `v2/${repository}/blobs/`,
-    registry
-  ).toString()
-  const uploadBlobEndpoint = new URL(
-    `v2/${repository}/blobs/uploads/`,
-    registry
-  ).toString()
-  const manifestEndpoint = new URL(
-    `v2/${repository}/manifests/${semver}`,
-    registry
-  ).toString()
-
   core.info(
     `Creating GHCR package for release with semver:${semver} with path:"${zipFile.path}" and "${tarFile.path}".`
   )
@@ -37,28 +24,25 @@ export async function publishOCIArtifact(
       case 'application/vnd.github.actions.package.layer.v1.tar+gzip':
         return uploadLayer(
           layer,
-          tarFile,
+          fsHelper.readFileContents(zipFile.path),
           registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
+          repository,
           b64Token
         )
       case 'application/vnd.github.actions.package.layer.v1.zip':
         return uploadLayer(
           layer,
-          zipFile,
+          fsHelper.readFileContents(zipFile.path),
           registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
+          repository,
           b64Token
         )
       case 'application/vnd.oci.empty.v1+json':
         return uploadLayer(
           layer,
-          { path: '', size: 2, sha256: layer.digest },
+          Buffer.from('{}'),
           registry,
-          checkBlobEndpoint,
-          uploadBlobEndpoint,
+          repository,
           b64Token
         )
       default:
@@ -70,7 +54,10 @@ export async function publishOCIArtifact(
 
   const digest = await uploadManifest(
     JSON.stringify(manifest),
-    manifestEndpoint,
+    manifest.mediaType,
+    registry,
+    repository,
+    semver,
     b64Token
   )
 
@@ -82,14 +69,13 @@ export async function publishOCIArtifact(
 
 async function uploadLayer(
   layer: ociContainer.Descriptor,
-  file: FileMetadata,
+  data: Buffer,
   registryURL: URL,
-  checkBlobEndpoint: string,
-  uploadBlobEndpoint: string,
+  repository: string,
   b64Token: string
 ): Promise<void> {
   const checkExistsResponse = await fetchWithDebug(
-    checkBlobEndpoint + layer.digest,
+    checkBlobEndpoint(registryURL, repository, layer.digest),
     {
       method: 'HEAD',
       headers: {
@@ -117,7 +103,9 @@ async function uploadLayer(
 
   core.info(`Uploading layer ${layer.digest}.`)
 
-  const initiateUploadResponse = await fetchWithDebug(uploadBlobEndpoint, {
+  const initiateUploadBlobURL = uploadBlobEndpoint(registryURL, repository)
+
+  const initiateUploadResponse = await fetchWithDebug(initiateUploadBlobURL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${b64Token}`
@@ -137,20 +125,12 @@ async function uploadLayer(
   const locationResponseHeader = initiateUploadResponse.headers.get('location')
   if (locationResponseHeader === undefined) {
     throw new Error(
-      `No location header in response from upload post ${uploadBlobEndpoint} for layer ${layer.digest}`
+      `No location header in response from upload post ${initiateUploadBlobURL} for layer ${layer.digest}`
     )
   }
 
   const pathname = `${locationResponseHeader}?digest=${layer.digest}`
   const uploadBlobUrl = new URL(pathname, registryURL).toString()
-
-  // TODO: must we handle the empty config layer? Maybe we can just skip calling this at all
-  let data: Buffer
-  if (layer.mediaType === 'application/vnd.oci.empty.v1+json') {
-    data = Buffer.from('{}')
-  } else {
-    data = fsHelper.readFileContents(file.path)
-  }
 
   const putResponse = await fetchWithDebug(uploadBlobUrl, {
     method: 'PUT',
@@ -176,16 +156,21 @@ async function uploadLayer(
 // Uploads the manifest and returns the digest returned by GHCR
 async function uploadManifest(
   manifestJSON: string,
-  manifestEndpoint: string,
+  manifestMediaType: string,
+  registry: URL,
+  repository: string,
+  version: string,
   b64Token: string
 ): Promise<string> {
-  core.info(`Uploading manifest to ${manifestEndpoint}.`)
+  const manifestUrl = manifestEndpoint(registry, repository, version)
 
-  const putResponse = await fetchWithDebug(manifestEndpoint, {
+  core.info(`Uploading manifest to ${manifestUrl}.`)
+
+  const putResponse = await fetchWithDebug(manifestUrl, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${b64Token}`,
-      'Content-Type': 'application/vnd.oci.image.manifest.v1+json'
+      'Content-Type': manifestMediaType
     },
     body: manifestJSON
   })
@@ -199,7 +184,7 @@ async function uploadManifest(
   const digestResponseHeader = putResponse.headers.get('docker-content-digest')
   if (digestResponseHeader === undefined || digestResponseHeader === null) {
     throw new Error(
-      `No digest header in response from PUT manifest ${manifestEndpoint}`
+      `No digest header in response from PUT manifest ${manifestUrl}`
     )
   }
 
@@ -257,6 +242,27 @@ function isGHCRError(obj: unknown): boolean {
   )
 }
 
+function checkBlobEndpoint(
+  registry: URL,
+  repository: string,
+  digest: string
+): string {
+  return new URL(`v2/${repository}/blobs/${digest}`, registry).toString()
+}
+
+function uploadBlobEndpoint(registry: URL, repository: string): string {
+  return new URL(`v2/${repository}/blobs/uploads/`, registry).toString()
+}
+
+function manifestEndpoint(
+  registry: URL,
+  repository: string,
+  version: string
+): string {
+  return new URL(`v2/${repository}/manifests/${version}`, registry).toString()
+}
+
+// TODO: Add retries with backoff
 const fetchWithDebug = async (
   url: string,
   config: RequestInit = {}
