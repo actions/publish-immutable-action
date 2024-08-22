@@ -786,6 +786,9 @@ Apache-2.0
    limitations under the License.
 
 
+@sigstore/oci
+Apache-2.0
+
 @sigstore/protobuf-specs
 Apache-2.0
 

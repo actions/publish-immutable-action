@@ -5,6 +5,7 @@ import * as ociContainer from './oci-container'
 import * as ghcr from './ghcr-client'
 import * as attest from '@actions/attest'
 import * as cfg from './config'
+import { attachArtifactToImage, Descriptor } from '@sigstore/oci'
 
 /**
  * The main function for the action.
@@ -52,18 +53,6 @@ export async function run(): Promise<void> {
 
     const manifestDigest = ociContainer.sha256Digest(manifest)
 
-    // Attestations are not currently supported in GHES.
-    if (!options.isEnterprise) {
-      const attestation = await generateAttestation(
-        manifestDigest,
-        semverTag.raw,
-        options
-      )
-      if (attestation.attestationID !== undefined) {
-        core.setOutput('attestation-id', attestation.attestationID)
-      }
-    }
-
     const { packageURL, publishedDigest } = await ghcr.publishOCIArtifact(
       options.token,
       options.containerRegistryUrl,
@@ -78,6 +67,23 @@ export async function run(): Promise<void> {
       throw new Error(
         `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
       )
+    }
+
+    // Attestations are not currently supported in GHES.
+    if (!options.isEnterprise) {
+      const attestation = await uploadAttestation(
+        publishedDigest,
+        semverTag.raw,
+        options
+      )
+      if (attestation.digest !== undefined) {
+        core.info(`Uploaded attestation ${attestation.digest}`)
+        core.setOutput('attestation-manifest-sha', attestation.digest)
+      }
+      if (attestation.urls !== undefined && attestation.urls.length > 0) {
+        core.info(`Attestation URL: ${attestation.digest}`)
+        core.setOutput('attestation-url', attestation.urls[0])
+      }
     }
 
     core.setOutput('package-url', packageURL.toString())
@@ -112,25 +118,48 @@ function parseSemverTagFromRef(opts: cfg.PublishActionOptions): semver.SemVer {
 
 // Generate an attestation using the actions toolkit
 // Subject name will contain the repo/package name and the tag name
-async function generateAttestation(
+async function uploadAttestation(
   manifestDigest: string,
   semverTag: string,
   options: cfg.PublishActionOptions
-): Promise<attest.Attestation> {
+): Promise<Descriptor> {
+  const OCI_TIMEOUT = 30000
+  const OCI_RETRY = 3
+  const PREDICATE_TYPE = 'https://slsa.dev/provenance/v1'
+
   const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
 
   core.info(`Generating attestation ${subjectName} for digest ${subjectDigest}`)
 
-  return await attest.attestProvenance({
+  const attestation = await attest.attestProvenance({
     subjectName,
     subjectDigest: { sha256: subjectDigest },
     token: options.token,
     sigstore: 'github',
-    // Always store the attestation using the GitHub Attestations API
-    skipWrite: false,
-    // Identify the attestation to our API as an Immutable Action
-    headers: { 'X-GitHub-Publish-Action': subjectName }
+    skipWrite: true // We will upload attestations to GHCR
+  })
+
+  // Upload the attestation to the GitHub Container Registry
+  const credentials = { username: 'token', password: options.token }
+
+  return await attachArtifactToImage({
+    credentials,
+    imageName: `${options.containerRegistryUrl.host}/${options.nameWithOwner}`,
+    imageDigest: manifestDigest,
+    artifact: Buffer.from(JSON.stringify(attestation.bundle)),
+    mediaType: attestation.bundle.mediaType,
+    annotations: {
+      'dev.sigstore.bundle.content': 'dsse-envelope',
+      'dev.sigstore.bundle.predicateType': PREDICATE_TYPE,
+      'com.github.package.type': 'actions_oci_pkg_attestation'
+    },
+    fetchOpts: {
+      timeout: OCI_TIMEOUT,
+      retry: OCI_RETRY,
+      proxy: undefined,
+      noProxy: undefined
+    }
   })
 }
 
