@@ -1,18 +1,23 @@
 import { FileMetadata } from './fs-helper'
 import * as crypto from 'crypto'
 
-const imageIndexMediaType = 'application/vnd.oci.image.index.v1+json'
-const imageManifestMediaType = 'application/vnd.oci.image.manifest.v1+json'
-const actionsPackageMediaType = 'application/vnd.github.actions.package.v1+json'
-const actionsPackageTarLayerMediaType =
+export const imageIndexMediaType = 'application/vnd.oci.image.index.v1+json'
+export const imageManifestMediaType =
+  'application/vnd.oci.image.manifest.v1+json'
+export const actionsPackageMediaType =
+  'application/vnd.github.actions.package.v1+json'
+export const actionsPackageTarLayerMediaType =
   'application/vnd.github.actions.package.layer.v1.tar+gzip'
-const actionsPackageZipLayerMediaType =
+export const actionsPackageZipLayerMediaType =
   'application/vnd.github.actions.package.layer.v1.zip'
-const sigstoreBundleMediaType = 'application/vnd.dev.sigstore.bundle.v0.3+json'
+export const sigstoreBundleMediaType =
+  'application/vnd.dev.sigstore.bundle.v0.3+json'
 
-const actionPackageAnnotationValue = 'actions_oci_pkg'
-const actionPackageAttestationAnnotationValue = 'actions_oci_pkg_attestation'
-const actionPackageReferrerTagAnnotationValue = 'actions_oci_pkg_referrer_tag'
+export const actionPackageAnnotationValue = 'actions_oci_pkg'
+export const actionPackageAttestationAnnotationValue =
+  'actions_oci_pkg_attestation'
+export const actionPackageReferrerTagAnnotationValue =
+  'actions_oci_pkg_referrer_tag'
 
 export const ociEmptyMediaType = 'application/vnd.oci.empty.v1+json'
 export const emptyConfigSize = 2

@@ -30,7 +30,7 @@ export async function uploadOCIImageManifest(
 
   await Promise.all(layerUploads)
 
-  return await uploadManifest(
+  const publishedDigest = await uploadManifest(
     JSON.stringify(manifest),
     manifest.mediaType,
     registry,
@@ -38,6 +38,14 @@ export async function uploadOCIImageManifest(
     tag || manifestSHA,
     b64Token
   )
+
+  if (publishedDigest !== manifestSHA) {
+    throw new Error(
+      `Digest mismatch. Expected ${manifestSHA}, got ${publishedDigest}.`
+    )
+  }
+
+  return manifestSHA
 }
 
 export async function uploadOCIIndexManifest(
@@ -54,7 +62,7 @@ export async function uploadOCIIndexManifest(
     `Uploading index manifest ${manifestSHA} with tag ${tag} to ${repository}.`
   )
 
-  return await uploadManifest(
+  const publishedDigest = await uploadManifest(
     JSON.stringify(manifest),
     manifest.mediaType,
     registry,
@@ -62,6 +70,14 @@ export async function uploadOCIIndexManifest(
     tag,
     b64Token
   )
+
+  if (publishedDigest !== manifestSHA) {
+    throw new Error(
+      `Digest mismatch. Expected ${manifestSHA}, got ${publishedDigest}.`
+    )
+  }
+
+  return manifestSHA
 }
 
 async function uploadLayer(
