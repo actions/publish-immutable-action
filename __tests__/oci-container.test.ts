@@ -155,7 +155,7 @@ describe('createReferrerIndexManifest', () => {
     }
   ],
   "annotations": {
-    "com.github.package.type": "actions_oci_pkg_referrer_tag",
+    "com.github.package.type": "actions_oci_pkg_referrer_index",
     "org.opencontainers.image.created": "2021-01-01T00:00:00.000Z"
   }
 }

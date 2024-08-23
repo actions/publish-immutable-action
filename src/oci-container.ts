@@ -17,7 +17,7 @@ export const actionPackageAnnotationValue = 'actions_oci_pkg'
 export const actionPackageAttestationAnnotationValue =
   'actions_oci_pkg_attestation'
 export const actionPackageReferrerTagAnnotationValue =
-  'actions_oci_pkg_referrer_tag'
+  'actions_oci_pkg_referrer_index'
 
 export const ociEmptyMediaType = 'application/vnd.oci.empty.v1+json'
 export const emptyConfigSize = 2
