@@ -31,6 +31,9 @@ let readFileContentsMock: jest.SpyInstance
 let calculateManifestDigestMock: jest.SpyInstance
 
 // Mock GHCR client
+let client: ghcr.Client
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let createGHCRClient: jest.SpyInstance
 let uploadOCIImageManifestMock: jest.SpyInstance
 let uploadOCIIndexManifestMock: jest.SpyInstance
 
@@ -43,6 +46,8 @@ let generateAttestationMock: jest.SpyInstance
 describe('run', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+
+    client = new ghcr.Client('token', ghcrUrl)
 
     // Core mocks
     setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
@@ -71,11 +76,15 @@ describe('run', () => {
       .mockImplementation()
 
     // GHCR Client mocks
+    createGHCRClient = jest
+      .spyOn(ghcr, 'Client')
+      .mockImplementation(() => client)
+
     uploadOCIImageManifestMock = jest
-      .spyOn(ghcr, 'uploadOCIImageManifest')
+      .spyOn(client, 'uploadOCIImageManifest')
       .mockImplementation()
     uploadOCIIndexManifestMock = jest
-      .spyOn(ghcr, 'uploadOCIIndexManifest')
+      .spyOn(client, 'uploadOCIIndexManifest')
       .mockImplementation()
 
     // Config mocks
@@ -428,7 +437,7 @@ describe('run', () => {
     })
 
     uploadOCIImageManifestMock.mockImplementation(
-      (token, registry, repo, manifest, blobs, tag) => {
+      (repo, manifest, blobs, tag) => {
         if (tag === undefined) {
           return 'attestation-digest'
         } else {
@@ -485,9 +494,7 @@ describe('run', () => {
     })
 
     uploadOCIImageManifestMock.mockImplementation(
-      (token, registry, repository, manifest, blobs, tag) => {
-        expect(token).toBe(options.token)
-        expect(registry).toBe(options.containerRegistryUrl)
+      (repository, manifest, blobs, tag) => {
         expect(repository).toBe(options.nameWithOwner)
         expect(tag).toBe('1.2.3')
         expect(blobs.size).toBe(3)
@@ -572,9 +579,7 @@ describe('run', () => {
     })
 
     uploadOCIIndexManifestMock.mockImplementation(
-      async (token, registry, repository, manifest, tag) => {
-        expect(token).toBe(options.token)
-        expect(registry).toBe(options.containerRegistryUrl)
+      async (repository, manifest, tag) => {
         expect(repository).toBe(options.nameWithOwner)
         expect(tag).toBe('sha256-my-test-digest')
         expect(manifest.mediaType).toBe(ociContainer.imageIndexMediaType)
@@ -583,7 +588,7 @@ describe('run', () => {
     )
 
     uploadOCIImageManifestMock.mockImplementation(
-      (token, registry, repository, manifest, blobs, tag) => {
+      (repository, manifest, blobs, tag) => {
         let expectedBlobKeys: string[] = []
         let expectedAnnotationValue = ''
         let expectedTagValue: string | undefined = undefined
@@ -606,8 +611,6 @@ describe('run', () => {
           returnValue = 'sha256:my-test-digest'
         }
 
-        expect(token).toBe(options.token)
-        expect(registry).toBe(options.containerRegistryUrl)
         expect(repository).toBe(options.nameWithOwner)
         expect(manifest.mediaType).toBe(ociContainer.imageManifestMediaType)
         expect(manifest.annotations['com.github.package.type']).toBe(

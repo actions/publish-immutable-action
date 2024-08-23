@@ -53,6 +53,11 @@ export async function run(): Promise<void> {
 
     const manifestDigest = ociContainer.sha256Digest(manifest)
 
+    const ghcrClient = new ghcr.Client(
+      options.token,
+      options.containerRegistryUrl
+    )
+
     // Attestations are not supported in GHES.
     if (!options.isEnterprise) {
       const { bundle, bundleDigest } = await generateAttestation(
@@ -77,7 +82,8 @@ export async function run(): Promise<void> {
       )
 
       const { attestationSHA, referrerIndexSHA } = await publishAttestation(
-        options,
+        ghcrClient,
+        options.nameWithOwner,
         bundle,
         bundleDigest,
         manifest,
@@ -96,18 +102,13 @@ export async function run(): Promise<void> {
     }
 
     const publishedDigest = await publishImmutableActionVersion(
-      options,
+      ghcrClient,
+      options.nameWithOwner,
       semverTag.raw,
       archives.zipFile,
       archives.tarFile,
       manifest
     )
-
-    if (manifestDigest !== publishedDigest) {
-      throw new Error(
-        `Unexpected digest returned for manifest. Expected ${manifestDigest}, got ${publishedDigest}`
-      )
-    }
 
     core.setOutput('package-manifest-sha', publishedDigest)
   } catch (error) {
@@ -138,7 +139,8 @@ function parseSemverTagFromRef(opts: cfg.PublishActionOptions): semver.SemVer {
 }
 
 async function publishImmutableActionVersion(
-  options: cfg.PublishActionOptions,
+  client: ghcr.Client,
+  nameWithOwner: string,
   semverTag: string,
   zipFile: fsHelper.FileMetadata,
   tarFile: fsHelper.FileMetadata,
@@ -155,10 +157,8 @@ async function publishImmutableActionVersion(
   files.set(tarFile.sha256, fsHelper.readFileContents(tarFile.path))
   files.set(ociContainer.emptyConfigSha, Buffer.from('{}'))
 
-  return await ghcr.uploadOCIImageManifest(
-    options.token,
-    options.containerRegistryUrl,
-    options.nameWithOwner,
+  return await client.uploadOCIImageManifest(
+    nameWithOwner,
     manifest,
     files,
     semverTag
@@ -166,7 +166,8 @@ async function publishImmutableActionVersion(
 }
 
 async function publishAttestation(
-  options: cfg.PublishActionOptions,
+  client: ghcr.Client,
+  nameWithOwner: string,
   bundle: Buffer,
   bundleDigest: string,
   subjectManifest: ociContainer.OCIImageManifest,
@@ -191,10 +192,8 @@ async function publishAttestation(
   files.set(ociContainer.emptyConfigSha, Buffer.from('{}'))
   files.set(bundleDigest, bundle)
 
-  const attestationSHA = await ghcr.uploadOCIImageManifest(
-    options.token,
-    options.containerRegistryUrl,
-    options.nameWithOwner,
+  const attestationSHA = await client.uploadOCIImageManifest(
+    nameWithOwner,
     attestationManifest,
     files
   )
@@ -206,10 +205,8 @@ async function publishAttestation(
     `Publishing referrer index ${referrerIndexManifestDigest} with tag ${referrerTag} for attestation ${attestationManifestDigest} and subject ${subjectManifestDigest}.`
   )
 
-  const referrerIndexSHA = await ghcr.uploadOCIIndexManifest(
-    options.token,
-    options.containerRegistryUrl,
-    options.nameWithOwner,
+  const referrerIndexSHA = await client.uploadOCIIndexManifest(
+    nameWithOwner,
     referrerIndexManifest,
     referrerTag
   )

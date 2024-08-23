@@ -76,6 +76,13 @@ describe('createActionPackageManifest', () => {
     const manifestJSON = JSON.stringify(manifest)
     expect(manifestJSON).toEqual(expectedJSON.replace(/\s/g, ''))
   })
+
+  it('uses the current time if no created date is provided', () => {
+    const { manifest } = testActionPackageManifest(false)
+    expect(
+      manifest.annotations['org.opencontainers.image.created']
+    ).toBeDefined()
+  })
 })
 
 describe('createSigstoreAttestationManifest', () => {
@@ -116,6 +123,13 @@ describe('createSigstoreAttestationManifest', () => {
 
     expect(manifestJSON).toEqual(expectedJSON.replace(/\s/g, ''))
   })
+
+  it('uses the current time if no created date is provided', () => {
+    const manifest = testAttestationManifest(false)
+    expect(
+      manifest.annotations['org.opencontainers.image.created']
+    ).toBeDefined()
+  })
 })
 
 describe('createReferrerIndexManifest', () => {
@@ -151,9 +165,16 @@ describe('createReferrerIndexManifest', () => {
 
     expect(manifestJSON).toEqual(expectedJSON.replace(/\s/g, ''))
   })
+
+  it('uses the current time if no created date is provided', () => {
+    const manifest = testReferrerIndexManifest(false)
+    expect(
+      manifest.annotations['org.opencontainers.image.created']
+    ).toBeDefined()
+  })
 })
 
-function testActionPackageManifest(): {
+function testActionPackageManifest(setCreated = true): {
   manifest: OCIImageManifest
   tarFile: FileMetadata
   zipFile: FileMetadata
@@ -183,7 +204,7 @@ function testActionPackageManifest(): {
     ownerId,
     sourceCommit,
     version,
-    date
+    setCreated ? date : undefined
   )
 
   return {
@@ -193,21 +214,23 @@ function testActionPackageManifest(): {
   }
 }
 
-function testAttestationManifest(): OCIImageManifest {
+function testAttestationManifest(setCreated = true): OCIImageManifest {
+  const date = new Date(createdTimestamp)
   return createSigstoreAttestationManifest(
     10,
     'bundleDigest',
     100,
     'subjectDigest',
-    new Date(createdTimestamp)
+    setCreated ? date : undefined
   )
 }
 
-function testReferrerIndexManifest(): OCIIndexManifest {
+function testReferrerIndexManifest(setCreated = true): OCIIndexManifest {
+  const date = new Date(createdTimestamp)
   return createReferrerTagManifest(
     'attDigest',
     100,
-    new Date(createdTimestamp),
-    new Date(createdTimestamp)
+    date,
+    setCreated ? date : undefined
   )
 }
