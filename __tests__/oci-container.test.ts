@@ -16,7 +16,7 @@ describe('sha256Digest', () => {
     const { manifest } = testActionPackageManifest()
     const digest = sha256Digest(manifest)
     const expectedDigest =
-      'sha256:dd8537ef913cf87e25064a074973ed2c62699f1dbd74d0dd78e85d394a5758b5'
+      'sha256:1af9bf993bf068a51fbb54822471ab7507b07c553bcac09a7c91328740d8ed69'
 
     expect(digest).toEqual(expectedDigest)
   })
@@ -26,7 +26,7 @@ describe('size', () => {
   it('returns the total size of the provided manifest', () => {
     const { manifest } = testActionPackageManifest()
     const size = sizeInBytes(manifest)
-    expect(size).toBe(1133)
+    expect(size).toBe(991)
   })
 })
 
@@ -44,11 +44,6 @@ describe('createActionPackageManifest', () => {
                 "digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
             },
             "layers":[
-                {
-                  "mediaType":"application/vnd.oci.empty.v1+json",
-                  "size":2,
-                  "digest":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
-                },
                 {
                     "mediaType":"application/vnd.github.actions.package.layer.v1.tar+gzip",
                     "size":${tarFile.size},

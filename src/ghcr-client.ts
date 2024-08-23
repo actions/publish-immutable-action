@@ -20,7 +20,10 @@ export async function uploadOCIImageManifest(
     core.info(`Uploading manifest ${manifestSHA} to ${repository}.`)
   }
 
-  const layerUploads: Promise<void>[] = manifest.layers.map(async layer => {
+  // We must also upload the config layer
+  const layersToUpload = manifest.layers.concat(manifest.config)
+
+  const layerUploads: Promise<void>[] = layersToUpload.map(async layer => {
     const blob = blobs.get(layer.digest)
     if (!blob) {
       throw new Error(`Blob for layer ${layer.digest} not found`)

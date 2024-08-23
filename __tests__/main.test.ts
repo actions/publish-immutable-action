@@ -495,7 +495,7 @@ describe('run', () => {
         expect(blobs.has('123')).toBeTruthy()
         expect(blobs.has('1234')).toBeTruthy()
         expect(manifest.mediaType).toBe(ociContainer.imageManifestMediaType)
-        expect(manifest.layers.length).toBe(3)
+        expect(manifest.layers.length).toBe(2)
         expect(manifest.annotations['com.github.package.type']).toBe(
           ociContainer.actionPackageAnnotationValue
         )
@@ -585,7 +585,6 @@ describe('run', () => {
     uploadOCIImageManifestMock.mockImplementation(
       (token, registry, repository, manifest, blobs, tag) => {
         let expectedBlobKeys: string[] = []
-        let expectedLayers = 0
         let expectedAnnotationValue = ''
         let expectedTagValue: string | undefined = undefined
         let returnValue = ''
@@ -599,13 +598,11 @@ describe('run', () => {
           )
 
           expectedBlobKeys = [sigStoreLayer.digest, ociContainer.emptyConfigSha]
-          expectedLayers = 1
           returnValue = 'sha256:attestation-digest'
         } else {
           expectedAnnotationValue = ociContainer.actionPackageAnnotationValue
           expectedTagValue = '1.2.3'
           expectedBlobKeys = ['123', '1234', ociContainer.emptyConfigSha]
-          expectedLayers = 3
           returnValue = 'sha256:my-test-digest'
         }
 
@@ -617,7 +614,7 @@ describe('run', () => {
           expectedAnnotationValue
         )
         expect(tag).toBe(expectedTagValue)
-        expect(manifest.layers.length).toBe(expectedLayers)
+        expect(manifest.layers.length).toBe(expectedBlobKeys.length - 1) // Minus config layer
         expect(blobs.size).toBe(expectedBlobKeys.length)
         for (const expectedBlobKey of expectedBlobKeys) {
           expect(blobs.has(expectedBlobKey)).toBeTruthy()

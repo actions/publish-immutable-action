@@ -60,7 +60,7 @@ export function createActionPackageManifest(
   version: string,
   created: Date = new Date()
 ): OCIImageManifest {
-  const configLayer = createConfigLayer()
+  const configLayer = createEmptyConfigLayer()
   const sanitizedRepo = sanitizeRepository(repository)
   const tarLayer = createTarLayer(tarFile, sanitizedRepo, version)
   const zipLayer = createZipLayer(zipFile, sanitizedRepo, version)
@@ -70,7 +70,7 @@ export function createActionPackageManifest(
     mediaType: imageManifestMediaType,
     artifactType: actionsPackageMediaType,
     config: configLayer,
-    layers: [configLayer, tarLayer, zipLayer],
+    layers: [tarLayer, zipLayer],
     annotations: {
       'org.opencontainers.image.created': created.toISOString(),
       'action.tar.gz.digest': tarFile.sha256,
@@ -93,7 +93,7 @@ export function createSigstoreAttestationManifest(
   subjectDigest: string,
   created: Date = new Date()
 ): OCIImageManifest {
-  const configLayer = createConfigLayer()
+  const configLayer = createEmptyConfigLayer()
 
   const sigstoreAttestationLayer: Descriptor = {
     mediaType: sigstoreBundleMediaType,
@@ -178,7 +178,7 @@ export function sizeInBytes(
   return Buffer.byteLength(data, 'utf8')
 }
 
-function createConfigLayer(): Descriptor {
+export function createEmptyConfigLayer(): Descriptor {
   const configLayer: Descriptor = {
     mediaType: ociEmptyMediaType,
     size: emptyConfigSize,
