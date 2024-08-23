@@ -1,5 +1,6 @@
 import {
-  uploadOCIImageManifest
+  uploadOCIImageManifest,
+  uploadOCIIndexManifest
   // uploadOCIIndexManifest
 } from '../src/ghcr-client'
 import * as ociContainer from '../src/oci-container'
@@ -178,6 +179,63 @@ function configureFetchMock(
   )
 }
 
+describe('uploadOCIIndexManifest', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    fetchMock = jest.spyOn(global, 'fetch').mockImplementation()
+  })
+
+  it('uploads the tagged manifest with the appropriate tag', async () => {
+    const { manifest, sha } = testIndexManifest()
+    const tag = 'sha-1234'
+
+    configureFetchMock(fetchMock, {
+      putManifestMock: putManifestSuccessful(sha, tag)
+    })
+
+    await uploadOCIIndexManifest(token, registry, repository, manifest, tag)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      fetchMock.mock.calls.filter(call => call[1].method === 'PUT')
+    ).toHaveLength(1)
+  })
+
+  it('throws an error if a manifest upload fails', async () => {
+    const { manifest, blobs } = testImageManifest()
+
+    configureFetchMock(fetchMock, {
+      checkBlobMock: checkBlobAllExistingBlobs,
+      initiateBlobUploadMock: initiateBlobUploadSuccessForAllBlobs,
+      putBlobMock: putBlobSuccess,
+      putManifestMock: putManifestFailure
+    })
+
+    await expect(
+      uploadOCIImageManifest(token, registry, repository, manifest, blobs)
+    ).rejects.toThrow(
+      'Unexpected 400 Bad Request response from manifest upload. Errors: BAD_REQUEST - tag already exists.'
+    )
+  })
+
+  it('throws an error if the returned digest does not match the precalculated one', async () => {
+    const { manifest, sha, blobs } = testImageManifest()
+
+    configureFetchMock(fetchMock, {
+      checkBlobMock: checkBlobAllExistingBlobs,
+      initiateBlobUploadMock: initiateBlobUploadSuccessForAllBlobs,
+      putBlobMock: putBlobSuccess,
+      putManifestMock: putManifestSuccessful('some-garbage-digest', sha)
+    })
+
+    await expect(
+      uploadOCIImageManifest(token, registry, repository, manifest, blobs)
+    ).rejects.toThrow(
+      `Digest mismatch. Expected ${sha}, got some-garbage-digest.`
+    )
+  })
+})
+
 describe('uploadOCIImageManifest', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -196,7 +254,6 @@ describe('uploadOCIImageManifest', () => {
 
     await uploadOCIImageManifest(token, registry, repository, manifest, blobs)
 
-    // TODO: See what calls there are
     expect(fetchMock).toHaveBeenCalledTimes(10)
     expect(
       fetchMock.mock.calls.filter(call => call[1].method === 'HEAD')
@@ -228,7 +285,6 @@ describe('uploadOCIImageManifest', () => {
       semver
     )
 
-    // TODO: See what calls there are
     expect(fetchMock).toHaveBeenCalledTimes(10)
     expect(
       fetchMock.mock.calls.filter(call => call[1].method === 'HEAD')
@@ -388,19 +444,6 @@ describe('uploadOCIImageManifest', () => {
   })
 })
 
-describe('uploadOCIIndexManifest', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
-    fetchMock = jest.spyOn(global, 'fetch').mockImplementation()
-  })
-
-  it('uploads the tagged manifest with the appropriate tag', async () => {})
-
-  it('throws an error if a manifest upload fails', async () => {})
-
-  it('throws an error if the returned digest does not match the precalculated one', async () => {})
-})
-
 function testImageManifest(): {
   manifest: ociContainer.OCIImageManifest
   sha: string
@@ -450,6 +493,20 @@ function testImageManifest(): {
   const sha = ociContainer.sha256Digest(manifest)
 
   return { manifest, sha, blobs }
+}
+
+function testIndexManifest(): {
+  manifest: ociContainer.OCIIndexManifest
+  sha: string
+} {
+  const manifest = ociContainer.createReferrerTagManifest(
+    'attestation-digest',
+    1234,
+    new Date(),
+    new Date()
+  )
+  const sha = ociContainer.sha256Digest(manifest)
+  return { manifest, sha }
 }
 
 // We expect all fetch calls to have auth headers set
