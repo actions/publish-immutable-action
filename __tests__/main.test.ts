@@ -15,6 +15,8 @@ import * as ghcr from '../src/ghcr-client'
 import * as ociContainer from '../src/oci-container'
 
 const ghcrUrl = new URL('https://ghcr.io')
+const predicateType = 'https://slsa.dev/provenance/v1'
+const bundleMediaType = 'application/vnd.dev.sigstore.bundle.v0.3+json'
 
 // Mock the GitHub Actions core library
 let setFailedMock: jest.SpyInstance
@@ -25,12 +27,17 @@ let createTempDirMock: jest.SpyInstance
 let createArchivesMock: jest.SpyInstance
 let stageActionFilesMock: jest.SpyInstance
 let ensureCorrectShaCheckedOutMock: jest.SpyInstance
+let readFileContentsMock: jest.SpyInstance
 
 // Mock OCI container lib
 let calculateManifestDigestMock: jest.SpyInstance
 
 // Mock GHCR client
-let publishOCIArtifactMock: jest.SpyInstance
+let client: ghcr.Client
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let createGHCRClient: jest.SpyInstance
+let uploadOCIImageManifestMock: jest.SpyInstance
+let uploadOCIIndexManifestMock: jest.SpyInstance
 
 // Mock the config resolution
 let resolvePublishActionOptionsMock: jest.SpyInstance
@@ -41,6 +48,8 @@ let generateAttestationMock: jest.SpyInstance
 describe('run', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+
+    client = new ghcr.Client('token', ghcrUrl)
 
     // Core mocks
     setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
@@ -59,6 +68,9 @@ describe('run', () => {
     ensureCorrectShaCheckedOutMock = jest
       .spyOn(fsHelper, 'ensureTagAndRefCheckedOut')
       .mockImplementation()
+    readFileContentsMock = jest
+      .spyOn(fsHelper, 'readFileContents')
+      .mockImplementation()
 
     // OCI Container mocks
     calculateManifestDigestMock = jest
@@ -66,8 +78,15 @@ describe('run', () => {
       .mockImplementation()
 
     // GHCR Client mocks
-    publishOCIArtifactMock = jest
-      .spyOn(ghcr, 'publishOCIArtifact')
+    createGHCRClient = jest
+      .spyOn(ghcr, 'Client')
+      .mockImplementation(() => client)
+
+    uploadOCIImageManifestMock = jest
+      .spyOn(client, 'uploadOCIImageManifest')
+      .mockImplementation()
+    uploadOCIIndexManifestMock = jest
+      .spyOn(client, 'uploadOCIIndexManifest')
       .mockImplementation()
 
     // Config mocks
@@ -211,6 +230,10 @@ describe('run', () => {
 
     stageActionFilesMock.mockImplementation(() => {})
 
+    calculateManifestDigestMock.mockImplementation(() => {
+      return 'sha256:my-test-digest'
+    })
+
     createArchivesMock.mockImplementation(() => {
       return {
         zipFile: {
@@ -226,8 +249,11 @@ describe('run', () => {
       }
     })
 
-    calculateManifestDigestMock.mockImplementation(() => {
-      return 'sha256:my-test-digest'
+    uploadOCIImageManifestMock.mockImplementation(() => {
+      return {
+        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
+        publishedDigest: 'sha256:my-test-digest'
+      }
     })
 
     generateAttestationMock.mockImplementation(async () => {
@@ -241,7 +267,7 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('fails if publishing OCI artifact fails', async () => {
+  it('fails if uploading attestation to GHCR fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
     ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
@@ -272,23 +298,26 @@ describe('run', () => {
     })
 
     generateAttestationMock.mockImplementation(async options => {
-      expect(options).toHaveProperty('skipWrite', false)
+      expect(options).toHaveProperty('skipWrite', true)
 
       return {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
     })
 
-    publishOCIArtifactMock.mockImplementation(() => {
+    uploadOCIImageManifestMock.mockImplementation(() => {
       throw new Error('Something went wrong')
     })
 
@@ -299,7 +328,7 @@ describe('run', () => {
     expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
-  it('fails if unexpected digest returned from GHCR', async () => {
+  it('fails if uploading referrer index manifest to GHCR fails', async () => {
     resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
 
     ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
@@ -330,41 +359,186 @@ describe('run', () => {
     })
 
     generateAttestationMock.mockImplementation(async options => {
-      expect(options).toHaveProperty('skipWrite', false)
+      expect(options).toHaveProperty('skipWrite', true)
 
       return {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
     })
 
-    publishOCIArtifactMock.mockImplementation(() => {
-      return {
-        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
-        publishedDigest: 'sha256:some-other-digest'
-      }
+    uploadOCIImageManifestMock.mockImplementation(() => {
+      return 'attestation-digest'
+    })
+
+    uploadOCIIndexManifestMock.mockImplementation(() => {
+      throw new Error('Something went wrong')
     })
 
     // Run the action
     await main.run()
 
     // Check the results
-    expect(setFailedMock).toHaveBeenCalledWith(
-      'Unexpected digest returned for manifest. Expected sha256:my-test-digest, got sha256:some-other-digest'
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
+  })
+
+  it('fails if publishing action package version fails', async () => {
+    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'test',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'test2',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    readFileContentsMock.mockImplementation(() => {
+      return Buffer.from('test')
+    })
+
+    calculateManifestDigestMock.mockImplementation(() => {
+      return 'sha256:my-test-digest'
+    })
+
+    generateAttestationMock.mockImplementation(async options => {
+      expect(options).toHaveProperty('skipWrite', true)
+
+      return {
+        attestationID: 'test-attestation-id',
+        certificate: 'test',
+        bundle: {
+          mediaType: bundleMediaType,
+          verificationMaterial: {
+            publicKey: {
+              hint: 'test-hint'
+            }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
+          }
+        }
+      }
+    })
+
+    uploadOCIImageManifestMock.mockImplementation(
+      (repo, manifest, blobs, tag) => {
+        if (tag === undefined) {
+          return 'attestation-digest'
+        } else {
+          throw new Error('Something went wrong')
+        }
+      }
     )
+
+    uploadOCIIndexManifestMock.mockImplementation(() => {
+      return 'referrer-index-digest'
+    })
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(setFailedMock).toHaveBeenCalledWith('Something went wrong')
   })
 
   it('uploads the artifact, returns package metadata from GHCR, and skips writing attestation in enterprise', async () => {
     const options = baseOptions()
     options.isEnterprise = true
+    resolvePublishActionOptionsMock.mockReturnValue(options)
+
+    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
+
+    createTempDirMock.mockImplementation(() => {
+      return 'stagingOrArchivesDir'
+    })
+
+    stageActionFilesMock.mockImplementation(() => {})
+
+    createArchivesMock.mockImplementation(() => {
+      return {
+        zipFile: {
+          path: 'zip',
+          size: 5,
+          sha256: '123'
+        },
+        tarFile: {
+          path: 'tar',
+          size: 52,
+          sha256: '1234'
+        }
+      }
+    })
+
+    readFileContentsMock.mockImplementation(filepath => {
+      return Buffer.from(`${filepath}`)
+    })
+
+    calculateManifestDigestMock.mockImplementation(() => {
+      return 'sha256:my-test-digest'
+    })
+
+    uploadOCIImageManifestMock.mockImplementation(
+      (repository, manifest, blobs, tag) => {
+        expect(repository).toBe(options.nameWithOwner)
+        expect(tag).toBe('1.2.3')
+        expect(blobs.size).toBe(3)
+        expect(blobs.has(ociContainer.emptyConfigSha)).toBeTruthy()
+        expect(blobs.has('123')).toBeTruthy()
+        expect(blobs.has('1234')).toBeTruthy()
+        expect(manifest.mediaType).toBe(ociContainer.imageManifestMediaType)
+        expect(manifest.layers.length).toBe(2)
+        expect(manifest.annotations['com.github.package.type']).toBe(
+          ociContainer.actionPackageAnnotationValue
+        )
+
+        return 'sha256:my-test-digest'
+      }
+    )
+
+    // Run the action
+    await main.run()
+
+    // Check the results
+    expect(uploadOCIImageManifestMock).toHaveBeenCalledTimes(1)
+
+    // Check outputs
+    expect(setOutputMock).toHaveBeenCalledTimes(1)
+
+    expect(setOutputMock).toHaveBeenCalledWith(
+      'package-manifest-sha',
+      'sha256:my-test-digest'
+    )
+  })
+
+  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in non-enterprise', async () => {
+    const options = baseOptions()
     resolvePublishActionOptionsMock.mockReturnValue(options)
 
     ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
@@ -390,123 +564,133 @@ describe('run', () => {
       }
     })
 
-    calculateManifestDigestMock.mockImplementation(() => {
-      return 'sha256:my-test-digest'
-    })
-
-    publishOCIArtifactMock.mockImplementation(() => {
-      return {
-        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
-        publishedDigest: 'sha256:my-test-digest'
-      }
-    })
-
-    // Run the action
-    await main.run()
-
-    // Check the results
-    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
-
-    // Check outputs
-    expect(setOutputMock).toHaveBeenCalledTimes(3)
-
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'package-url',
-      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
-    )
-
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'package-manifest',
-      expect.any(String)
-    )
-
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'package-manifest-sha',
-      'sha256:my-test-digest'
-    )
-  })
-
-  it('uploads the artifact, returns package metadata from GHCR, and creates an attestation in non-enterprise for public repo', async () => {
-    resolvePublishActionOptionsMock.mockReturnValue(baseOptions())
-
-    ensureCorrectShaCheckedOutMock.mockImplementation(() => {})
-
-    createTempDirMock.mockImplementation(() => {
-      return 'stagingOrArchivesDir'
-    })
-
-    stageActionFilesMock.mockImplementation(() => {})
-
-    createArchivesMock.mockImplementation(() => {
-      return {
-        zipFile: {
-          path: 'test',
-          size: 5,
-          sha256: '123'
-        },
-        tarFile: {
-          path: 'test2',
-          size: 52,
-          sha256: '1234'
-        }
-      }
+    readFileContentsMock.mockImplementation(() => {
+      return Buffer.from('test')
     })
 
     calculateManifestDigestMock.mockImplementation(() => {
       return 'sha256:my-test-digest'
     })
 
-    publishOCIArtifactMock.mockImplementation(() => {
-      return {
-        packageURL: 'https://ghcr.io/v2/test-org/test-repo:1.2.3',
-        publishedDigest: 'sha256:my-test-digest'
-      }
-    })
-
-    generateAttestationMock.mockImplementation(async options => {
-      expect(options).toHaveProperty('skipWrite', false)
+    generateAttestationMock.mockImplementation(async opts => {
+      expect(opts).toHaveProperty('skipWrite', true)
 
       return {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
     })
 
+    uploadOCIIndexManifestMock.mockImplementation(
+      async (repository, manifest, tag) => {
+        expect(repository).toBe(options.nameWithOwner)
+        expect(tag).toBe('sha256-my-test-digest')
+        expect(manifest.mediaType).toBe(ociContainer.imageIndexMediaType)
+        expect(manifest.annotations['com.github.package.type']).toBe(
+          ociContainer.actionPackageReferrerTagAnnotationValue
+        )
+        expect(manifest.manifests.length).toBe(1)
+        expect(manifest.manifests[0].mediaType).toBe(
+          ociContainer.imageManifestMediaType
+        )
+        expect(manifest.manifests[0].artifactType).toBe(bundleMediaType)
+        expect(
+          manifest.manifests[0].annotations['dev.sigstore.bundle.predicateType']
+        ).toBe(predicateType)
+        expect(
+          manifest.manifests[0].annotations['com.github.package.type']
+        ).toBe(ociContainer.actionPackageAttestationAnnotationValue)
+
+        return 'sha256:referrer-index-digest'
+      }
+    )
+
+    uploadOCIImageManifestMock.mockImplementation(
+      (repository, manifest, blobs, tag) => {
+        let expectedBlobKeys: string[] = []
+        let expectedAnnotationValue = ''
+        let expectedTagValue: string | undefined = undefined
+        let returnValue = ''
+        let expectedPredicateTypeValue: string | undefined = undefined
+
+        let expectedSubjectMediaType: string | undefined = undefined
+
+        if (tag === undefined) {
+          expectedAnnotationValue =
+            ociContainer.actionPackageAttestationAnnotationValue
+          const sigStoreLayer = manifest.layers.find(
+            (layer: ociContainer.Descriptor) =>
+              layer.mediaType === bundleMediaType
+          )
+          expectedPredicateTypeValue = predicateType
+
+          expectedBlobKeys = [sigStoreLayer.digest, ociContainer.emptyConfigSha]
+
+          expectedSubjectMediaType = ociContainer.imageManifestMediaType
+
+          returnValue = 'sha256:attestation-digest'
+        } else {
+          expectedAnnotationValue = ociContainer.actionPackageAnnotationValue
+          expectedTagValue = '1.2.3'
+          expectedBlobKeys = ['123', '1234', ociContainer.emptyConfigSha]
+          returnValue = 'sha256:my-test-digest'
+        }
+
+        expect(repository).toBe(options.nameWithOwner)
+        expect(manifest.mediaType).toBe(ociContainer.imageManifestMediaType)
+        expect(manifest.annotations['com.github.package.type']).toBe(
+          expectedAnnotationValue
+        )
+        expect(manifest.annotations['dev.sigstore.bundle.predicateType']).toBe(
+          expectedPredicateTypeValue
+        )
+        expect(tag).toBe(expectedTagValue)
+        expect(manifest.subject?.mediaType).toBe(expectedSubjectMediaType)
+
+        expect(manifest.layers.length).toBe(expectedBlobKeys.length - 1) // Minus config layer
+        expect(blobs.size).toBe(expectedBlobKeys.length)
+        for (const expectedBlobKey of expectedBlobKeys) {
+          expect(blobs.has(expectedBlobKey)).toBeTruthy()
+        }
+
+        return returnValue
+      }
+    )
+
     // Run the action
     await main.run()
 
     // Check the results
-    expect(publishOCIArtifactMock).toHaveBeenCalledTimes(1)
+    expect(uploadOCIImageManifestMock).toHaveBeenCalledTimes(2)
+    expect(uploadOCIIndexManifestMock).toHaveBeenCalledTimes(1)
 
     // Check outputs
-    expect(setOutputMock).toHaveBeenCalledTimes(4)
+    expect(setOutputMock).toHaveBeenCalledTimes(3)
 
     expect(setOutputMock).toHaveBeenCalledWith(
-      'package-url',
-      'https://ghcr.io/v2/test-org/test-repo:1.2.3'
+      'attestation-manifest-sha',
+      'sha256:attestation-digest'
     )
 
     expect(setOutputMock).toHaveBeenCalledWith(
-      'package-manifest',
-      expect.any(String)
+      'referrer-index-manifest-sha',
+      'sha256:referrer-index-digest'
     )
 
     expect(setOutputMock).toHaveBeenCalledWith(
       'package-manifest-sha',
       'sha256:my-test-digest'
-    )
-
-    expect(setOutputMock).toHaveBeenCalledWith(
-      'attestation-id',
-      'test-attestation-id'
     )
   })
 })

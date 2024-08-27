@@ -1,19 +1,49 @@
 import { FileMetadata } from './fs-helper'
 import * as crypto from 'crypto'
 
-export interface Manifest {
+export const imageIndexMediaType = 'application/vnd.oci.image.index.v1+json'
+export const imageManifestMediaType =
+  'application/vnd.oci.image.manifest.v1+json'
+export const actionsPackageMediaType =
+  'application/vnd.github.actions.package.v1+json'
+export const actionsPackageTarLayerMediaType =
+  'application/vnd.github.actions.package.layer.v1.tar+gzip'
+export const actionsPackageZipLayerMediaType =
+  'application/vnd.github.actions.package.layer.v1.zip'
+
+export const actionPackageAnnotationValue = 'actions_oci_pkg'
+export const actionPackageAttestationAnnotationValue =
+  'actions_oci_pkg_attestation'
+export const actionPackageReferrerTagAnnotationValue =
+  'actions_oci_pkg_referrer_index'
+
+export const ociEmptyMediaType = 'application/vnd.oci.empty.v1+json'
+export const emptyConfigSize = 2
+export const emptyConfigSha =
+  'sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'
+
+export interface OCIImageManifest {
   schemaVersion: number
   mediaType: string
   artifactType: string
-  config: Layer
-  layers: Layer[]
+  config: Descriptor
+  layers: Descriptor[]
+  subject?: Descriptor
   annotations: { [key: string]: string }
 }
 
-export interface Layer {
+export interface OCIIndexManifest {
+  schemaVersion: number
+  mediaType: string
+  manifests: Descriptor[]
+  annotations: { [key: string]: string }
+}
+
+export interface Descriptor {
   mediaType: string
   size: number
   digest: string
+  artifactType?: string
   annotations?: { [key: string]: string }
 }
 
@@ -26,24 +56,24 @@ export function createActionPackageManifest(
   ownerId: string,
   sourceCommit: string,
   version: string,
-  created: Date
-): Manifest {
-  const configLayer = createConfigLayer()
+  created: Date = new Date()
+): OCIImageManifest {
+  const configLayer = createEmptyConfigLayer()
   const sanitizedRepo = sanitizeRepository(repository)
   const tarLayer = createTarLayer(tarFile, sanitizedRepo, version)
   const zipLayer = createZipLayer(zipFile, sanitizedRepo, version)
 
-  const manifest: Manifest = {
+  const manifest: OCIImageManifest = {
     schemaVersion: 2,
-    mediaType: 'application/vnd.oci.image.manifest.v1+json',
-    artifactType: 'application/vnd.github.actions.package.v1+json',
+    mediaType: imageManifestMediaType,
+    artifactType: actionsPackageMediaType,
     config: configLayer,
-    layers: [configLayer, tarLayer, zipLayer],
+    layers: [tarLayer, zipLayer],
     annotations: {
       'org.opencontainers.image.created': created.toISOString(),
       'action.tar.gz.digest': tarFile.sha256,
       'action.zip.digest': zipFile.sha256,
-      'com.github.package.type': 'actions_oci_pkg',
+      'com.github.package.type': actionPackageAnnotationValue,
       'com.github.package.version': version,
       'com.github.source.repo.id': repoId,
       'com.github.source.repo.owner.id': ownerId,
@@ -54,9 +84,87 @@ export function createActionPackageManifest(
   return manifest
 }
 
+export function createSigstoreAttestationManifest(
+  bundleSize: number,
+  bundleDigest: string,
+  bundleMediaType: string,
+  bundlePredicateType: string,
+  subjectSize: number,
+  subjectDigest: string,
+  created: Date = new Date()
+): OCIImageManifest {
+  const configLayer = createEmptyConfigLayer()
+
+  const sigstoreAttestationLayer: Descriptor = {
+    mediaType: bundleMediaType,
+    size: bundleSize,
+    digest: bundleDigest
+  }
+
+  const subject: Descriptor = {
+    mediaType: imageManifestMediaType,
+    size: subjectSize,
+    digest: subjectDigest
+  }
+
+  const manifest: OCIImageManifest = {
+    schemaVersion: 2,
+    mediaType: imageManifestMediaType,
+    artifactType: bundleMediaType,
+    config: configLayer,
+    layers: [sigstoreAttestationLayer],
+    subject,
+
+    annotations: {
+      'dev.sigstore.bundle.content': 'dsse-envelope',
+      'dev.sigstore.bundle.predicateType': bundlePredicateType,
+      'com.github.package.type': actionPackageAttestationAnnotationValue,
+      'org.opencontainers.image.created': created.toISOString()
+    }
+  }
+
+  return manifest
+}
+
+export function createReferrerTagManifest(
+  attestationDigest: string,
+  attestationSize: number,
+  bundleMediaType: string,
+  bundlePredicateType: string,
+  attestationCreated: Date,
+  created: Date = new Date()
+): OCIIndexManifest {
+  const manifest: OCIIndexManifest = {
+    schemaVersion: 2,
+    mediaType: imageIndexMediaType,
+    manifests: [
+      {
+        mediaType: imageManifestMediaType,
+        artifactType: bundleMediaType,
+        size: attestationSize,
+        digest: attestationDigest,
+        annotations: {
+          'com.github.package.type': actionPackageAttestationAnnotationValue,
+          'org.opencontainers.image.created': attestationCreated.toISOString(),
+          'dev.sigstore.bundle.content': 'dsse-envelope',
+          'dev.sigstore.bundle.predicateType': bundlePredicateType
+        }
+      }
+    ],
+    annotations: {
+      'com.github.package.type': actionPackageReferrerTagAnnotationValue,
+      'org.opencontainers.image.created': created.toISOString()
+    }
+  }
+
+  return manifest
+}
+
 // Calculate the SHA256 digest of a given manifest.
 // This should match the digest which the GitHub container registry calculates for this manifest.
-export function sha256Digest(manifest: Manifest): string {
+export function sha256Digest(
+  manifest: OCIImageManifest | OCIIndexManifest
+): string {
   const data = JSON.stringify(manifest)
   const buffer = Buffer.from(data, 'utf8')
   const hash = crypto.createHash('sha256')
@@ -65,12 +173,18 @@ export function sha256Digest(manifest: Manifest): string {
   return `sha256:${hexHash}`
 }
 
-function createConfigLayer(): Layer {
-  const configLayer: Layer = {
-    mediaType: 'application/vnd.oci.empty.v1+json',
-    size: 2,
-    digest:
-      'sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'
+export function sizeInBytes(
+  manifest: OCIImageManifest | OCIIndexManifest
+): number {
+  const data = JSON.stringify(manifest)
+  return Buffer.byteLength(data, 'utf8')
+}
+
+export function createEmptyConfigLayer(): Descriptor {
+  const configLayer: Descriptor = {
+    mediaType: ociEmptyMediaType,
+    size: emptyConfigSize,
+    digest: emptyConfigSha
   }
 
   return configLayer
@@ -80,9 +194,9 @@ function createZipLayer(
   zipFile: FileMetadata,
   repository: string,
   version: string
-): Layer {
-  const zipLayer: Layer = {
-    mediaType: 'application/vnd.github.actions.package.layer.v1.zip',
+): Descriptor {
+  const zipLayer: Descriptor = {
+    mediaType: actionsPackageZipLayerMediaType,
     size: zipFile.size,
     digest: zipFile.sha256,
     annotations: {
@@ -97,9 +211,9 @@ function createTarLayer(
   tarFile: FileMetadata,
   repository: string,
   version: string
-): Layer {
-  const tarLayer: Layer = {
-    mediaType: 'application/vnd.github.actions.package.layer.v1.tar+gzip',
+): Descriptor {
+  const tarLayer: Descriptor = {
+    mediaType: actionsPackageTarLayerMediaType,
     size: tarFile.size,
     digest: tarFile.sha256,
     annotations: {

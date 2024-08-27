@@ -11,14 +11,12 @@ inputs:
     description: 'The GitHub actions token used to authenticate with GitHub APIs'
 
 outputs:
-  package-url:
-    description: 'The name of package published to GHCR along with semver. For example, https://ghcr.io/actions/package-action:1.0.1'
-  package-manifest:
-    description: 'The package manifest of the published package in JSON format'
   package-manifest-sha:
     description: 'A sha256 hash of the package manifest'
-  attestation-id:
-    description: 'The attestation id of the generated provenance attestation. This is not present if the package is not attested, e.g. in enterprise environments.'
+  attestation-manifest-sha:
+    description: 'The sha256 of the provenance attestation uploaded to GHCR. This is not present if the package is not attested, e.g. in enterprise environments.'
+  referrer-index-manifest-sha:
+    description: 'The sha256 of the referrer index uploaded to GHCR. This is not present if the package is not attested, e.g. in enterprise environments.'
 
 runs:
   using: node20
