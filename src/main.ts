@@ -60,24 +60,26 @@ export async function run(): Promise<void> {
 
     // Attestations are not supported in GHES.
     if (!options.isEnterprise) {
-      const { bundle, bundleDigest } = await generateAttestation(
-        manifestDigest,
-        semverTag.raw,
-        options
-      )
+      const { bundle, bundleDigest, bundleMediaType, bundlePredicateType } =
+        await generateAttestation(manifestDigest, semverTag.raw, options)
 
       const attestationCreated = new Date()
       const attestationManifest =
         ociContainer.createSigstoreAttestationManifest(
           bundle.length,
           bundleDigest,
+          bundleMediaType,
+          bundlePredicateType,
           ociContainer.sizeInBytes(manifest),
           manifestDigest,
           attestationCreated
         )
+
       const referrerIndexManifest = ociContainer.createReferrerTagManifest(
         ociContainer.sha256Digest(attestationManifest),
         ociContainer.sizeInBytes(attestationManifest),
+        bundleMediaType,
+        bundlePredicateType,
         attestationCreated
       )
 
@@ -221,6 +223,8 @@ async function generateAttestation(
 ): Promise<{
   bundle: Buffer
   bundleDigest: string
+  bundleMediaType: string
+  bundlePredicateType: string
 }> {
   const subjectName = `${options.nameWithOwner}@${semverTag}`
   const subjectDigest = removePrefix(manifestDigest, 'sha256:')
@@ -241,7 +245,26 @@ async function generateAttestation(
   hash.update(bundleArtifact)
   const bundleSHA = hash.digest('hex')
 
-  return { bundle: bundleArtifact, bundleDigest: `sha256:${bundleSHA}` }
+  // We must base64 decode the dsse envelope to grab the predicate type
+  const dsseEnvelopeArtifact = attestation.bundle.dsseEnvelope
+  if (dsseEnvelopeArtifact === undefined) {
+    throw new Error('Attestation bundle is missing dsseEnvelope artifact')
+  }
+
+  const dsseEnvelope = JSON.parse(
+    Buffer.from(dsseEnvelopeArtifact.payload, 'base64').toString('utf-8')
+  )
+  const predicateType = dsseEnvelope.predicateType
+  if (predicateType === undefined) {
+    throw new Error('Attestation bundle is missing predicateType')
+  }
+
+  return {
+    bundle: bundleArtifact,
+    bundleDigest: `sha256:${bundleSHA}`,
+    bundleMediaType: attestation.bundle.mediaType,
+    bundlePredicateType: predicateType
+  }
 }
 
 function removePrefix(str: string, prefix: string): string {

@@ -238,7 +238,6 @@ export class Client {
     ).toString()
   }
 
-  // TODO: Add retries with backoff
   private async fetchWithDebug(
     url: string,
     config: RequestInit = {}

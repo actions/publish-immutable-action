@@ -15,6 +15,8 @@ import * as ghcr from '../src/ghcr-client'
 import * as ociContainer from '../src/oci-container'
 
 const ghcrUrl = new URL('https://ghcr.io')
+const predicateType = 'https://slsa.dev/provenance/v1'
+const bundleMediaType = 'application/vnd.dev.sigstore.bundle.v0.3+json'
 
 // Mock the GitHub Actions core library
 let setFailedMock: jest.SpyInstance
@@ -302,11 +304,14 @@ describe('run', () => {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
@@ -360,11 +365,14 @@ describe('run', () => {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
@@ -426,11 +434,14 @@ describe('run', () => {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
@@ -568,11 +579,14 @@ describe('run', () => {
         attestationID: 'test-attestation-id',
         certificate: 'test',
         bundle: {
-          mediaType: 'application/vnd.cncf.notary.v2+jwt',
+          mediaType: bundleMediaType,
           verificationMaterial: {
             publicKey: {
               hint: 'test-hint'
             }
+          },
+          dsseEnvelope: {
+            payload: btoa(`{"predicateType": "${predicateType}"}`)
           }
         }
       }
@@ -583,6 +597,21 @@ describe('run', () => {
         expect(repository).toBe(options.nameWithOwner)
         expect(tag).toBe('sha256-my-test-digest')
         expect(manifest.mediaType).toBe(ociContainer.imageIndexMediaType)
+        expect(manifest.annotations['com.github.package.type']).toBe(
+          ociContainer.actionPackageReferrerTagAnnotationValue
+        )
+        expect(manifest.manifests.length).toBe(1)
+        expect(manifest.manifests[0].mediaType).toBe(
+          ociContainer.imageManifestMediaType
+        )
+        expect(manifest.manifests[0].artifactType).toBe(bundleMediaType)
+        expect(
+          manifest.manifests[0].annotations['dev.sigstore.bundle.predicateType']
+        ).toBe(predicateType)
+        expect(
+          manifest.manifests[0].annotations['com.github.package.type']
+        ).toBe(ociContainer.actionPackageAttestationAnnotationValue)
+
         return 'sha256:referrer-index-digest'
       }
     )
@@ -593,16 +622,23 @@ describe('run', () => {
         let expectedAnnotationValue = ''
         let expectedTagValue: string | undefined = undefined
         let returnValue = ''
+        let expectedPredicateTypeValue: string | undefined = undefined
+
+        let expectedSubjectMediaType: string | undefined = undefined
 
         if (tag === undefined) {
           expectedAnnotationValue =
             ociContainer.actionPackageAttestationAnnotationValue
           const sigStoreLayer = manifest.layers.find(
             (layer: ociContainer.Descriptor) =>
-              layer.mediaType === ociContainer.sigstoreBundleMediaType
+              layer.mediaType === bundleMediaType
           )
+          expectedPredicateTypeValue = predicateType
 
           expectedBlobKeys = [sigStoreLayer.digest, ociContainer.emptyConfigSha]
+
+          expectedSubjectMediaType = ociContainer.imageManifestMediaType
+
           returnValue = 'sha256:attestation-digest'
         } else {
           expectedAnnotationValue = ociContainer.actionPackageAnnotationValue
@@ -616,7 +652,12 @@ describe('run', () => {
         expect(manifest.annotations['com.github.package.type']).toBe(
           expectedAnnotationValue
         )
+        expect(manifest.annotations['dev.sigstore.bundle.predicateType']).toBe(
+          expectedPredicateTypeValue
+        )
         expect(tag).toBe(expectedTagValue)
+        expect(manifest.subject?.mediaType).toBe(expectedSubjectMediaType)
+
         expect(manifest.layers.length).toBe(expectedBlobKeys.length - 1) // Minus config layer
         expect(blobs.size).toBe(expectedBlobKeys.length)
         for (const expectedBlobKey of expectedBlobKeys) {

@@ -606,6 +606,8 @@ function testIndexManifest(): {
   const manifest = ociContainer.createReferrerTagManifest(
     'attestation-digest',
     1234,
+    'bundle-media-type',
+    'bundle-predicate-type',
     new Date(),
     new Date()
   )

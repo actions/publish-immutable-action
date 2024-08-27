@@ -219,6 +219,8 @@ function testAttestationManifest(setCreated = true): OCIImageManifest {
   return createSigstoreAttestationManifest(
     10,
     'bundleDigest',
+    'application/vnd.dev.sigstore.bundle.v0.3+json',
+    'https://slsa.dev/provenance/v1',
     100,
     'subjectDigest',
     setCreated ? date : undefined
@@ -230,6 +232,8 @@ function testReferrerIndexManifest(setCreated = true): OCIIndexManifest {
   return createReferrerTagManifest(
     'attDigest',
     100,
+    'application/vnd.dev.sigstore.bundle.v0.3+json',
+    'https://slsa.dev/provenance/v1',
     date,
     setCreated ? date : undefined
   )

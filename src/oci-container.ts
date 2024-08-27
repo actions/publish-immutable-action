@@ -10,8 +10,6 @@ export const actionsPackageTarLayerMediaType =
   'application/vnd.github.actions.package.layer.v1.tar+gzip'
 export const actionsPackageZipLayerMediaType =
   'application/vnd.github.actions.package.layer.v1.zip'
-export const sigstoreBundleMediaType =
-  'application/vnd.dev.sigstore.bundle.v0.3+json'
 
 export const actionPackageAnnotationValue = 'actions_oci_pkg'
 export const actionPackageAttestationAnnotationValue =
@@ -89,6 +87,8 @@ export function createActionPackageManifest(
 export function createSigstoreAttestationManifest(
   bundleSize: number,
   bundleDigest: string,
+  bundleMediaType: string,
+  bundlePredicateType: string,
   subjectSize: number,
   subjectDigest: string,
   created: Date = new Date()
@@ -96,7 +96,7 @@ export function createSigstoreAttestationManifest(
   const configLayer = createEmptyConfigLayer()
 
   const sigstoreAttestationLayer: Descriptor = {
-    mediaType: sigstoreBundleMediaType,
+    mediaType: bundleMediaType,
     size: bundleSize,
     digest: bundleDigest
   }
@@ -110,14 +110,14 @@ export function createSigstoreAttestationManifest(
   const manifest: OCIImageManifest = {
     schemaVersion: 2,
     mediaType: imageManifestMediaType,
-    artifactType: sigstoreBundleMediaType,
+    artifactType: bundleMediaType,
     config: configLayer,
     layers: [sigstoreAttestationLayer],
     subject,
 
     annotations: {
       'dev.sigstore.bundle.content': 'dsse-envelope',
-      'dev.sigstore.bundle.predicateType': 'https://slsa.dev/provenance/v1',
+      'dev.sigstore.bundle.predicateType': bundlePredicateType,
       'com.github.package.type': actionPackageAttestationAnnotationValue,
       'org.opencontainers.image.created': created.toISOString()
     }
@@ -129,6 +129,8 @@ export function createSigstoreAttestationManifest(
 export function createReferrerTagManifest(
   attestationDigest: string,
   attestationSize: number,
+  bundleMediaType: string,
+  bundlePredicateType: string,
   attestationCreated: Date,
   created: Date = new Date()
 ): OCIIndexManifest {
@@ -138,14 +140,14 @@ export function createReferrerTagManifest(
     manifests: [
       {
         mediaType: imageManifestMediaType,
-        artifactType: sigstoreBundleMediaType,
+        artifactType: bundleMediaType,
         size: attestationSize,
         digest: attestationDigest,
         annotations: {
           'com.github.package.type': actionPackageAttestationAnnotationValue,
           'org.opencontainers.image.created': attestationCreated.toISOString(),
           'dev.sigstore.bundle.content': 'dsse-envelope',
-          'dev.sigstore.bundle.predicateType': 'https://slsa.dev/provenance/v1'
+          'dev.sigstore.bundle.predicateType': bundlePredicateType
         }
       }
     ],
