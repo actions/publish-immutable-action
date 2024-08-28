@@ -45,40 +45,41 @@ export async function resolvePublishActionOptions(): Promise<PublishActionOption
     throw new Error(`Could not find event name.`)
   }
 
-  // Environment Variables
-  const ref: string = process.env.GITHUB_REF || ''
+  const ref: string = github.context.ref || ''
   if (ref === '') {
     throw new Error(`Could not find GITHUB_REF.`)
   }
 
+  const nameWithOwner: string =
+    github.context.payload.repository?.full_name || ''
+  if (nameWithOwner === '') {
+    throw new Error(`Could not find Repository.`)
+  }
+
+  const sha: string = github.context.sha || ''
+  if (sha === '') {
+    throw new Error(`Could not find GITHUB_SHA.`)
+  }
+
+  const apiBaseUrl: string = github.context.apiUrl || ''
+  if (apiBaseUrl === '') {
+    throw new Error(`Could not find GITHUB_API_URL.`)
+  }
+
+  const githubServerUrl = github.context.serverUrl || ''
+  if (githubServerUrl === '') {
+    throw new Error(`Could not find GITHUB_SERVER_URL.`)
+  }
+
+  // Environment Variables
   const workspaceDir: string = process.env.GITHUB_WORKSPACE || ''
   if (workspaceDir === '') {
     throw new Error(`Could not find GITHUB_WORKSPACE.`)
   }
 
-  const nameWithOwner: string = process.env.GITHUB_REPOSITORY || ''
-  if (nameWithOwner === '') {
-    throw new Error(`Could not find Repository.`)
-  }
-
-  const apiBaseUrl: string = process.env.GITHUB_API_URL || ''
-  if (apiBaseUrl === '') {
-    throw new Error(`Could not find GITHUB_API_URL.`)
-  }
-
   const runnerTempDir: string = process.env.RUNNER_TEMP || ''
   if (runnerTempDir === '') {
     throw new Error(`Could not find RUNNER_TEMP.`)
-  }
-
-  const sha: string = process.env.GITHUB_SHA || ''
-  if (sha === '') {
-    throw new Error(`Could not find GITHUB_SHA.`)
-  }
-
-  const githubServerUrl = process.env.GITHUB_SERVER_URL || ''
-  if (githubServerUrl === '') {
-    throw new Error(`Could not find GITHUB_SERVER_URL.`)
   }
 
   const repositoryId = process.env.GITHUB_REPOSITORY_ID || ''
