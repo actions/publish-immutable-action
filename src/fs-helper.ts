@@ -129,14 +129,25 @@ export async function ensureTagAndRefCheckedOut(
 
   const git: simpleGit.SimpleGit = simpleGit.simpleGit(gitDir)
 
-  const tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef])
+  let tagCommitSha: string
+
+  try {
+    tagCommitSha = await git.raw(['rev-parse', '--verify', tagRef])
+  } catch (err) {
+    throw new Error(`Error retrieving commit associated with tag: ${err}`)
+  }
   if (tagCommitSha.trim() !== expectedSha) {
     throw new Error(
       `The commit associated with the tag ${tagRef} does not match the SHA of the commit provided by the actions context.`
     )
   }
 
-  const currentlyCheckedOutSha = await git.revparse(['HEAD'])
+  let currentlyCheckedOutSha: string
+  try {
+    currentlyCheckedOutSha = await git.revparse(['HEAD'])
+  } catch (err) {
+    throw new Error(`Error validating checked out tag and ref: ${err}`)
+  }
   if (currentlyCheckedOutSha.trim() !== expectedSha) {
     throw new Error(
       `The expected commit associated with the tag ${tagRef} is not checked out.`

@@ -48,7 +48,7 @@ describe('config.resolvePublishActionOptions', () => {
 
   it('throws an error when the ref is not provided', async () => {
     getInputMock.mockReturnValueOnce('token')
-    process.env.GITHUB_REF = ''
+    github.context.ref = ''
 
     await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
       'Could not find GITHUB_REF.'
@@ -66,7 +66,7 @@ describe('config.resolvePublishActionOptions', () => {
 
   it('throws an error when the repository is not provided', async () => {
     getInputMock.mockReturnValueOnce('token')
-    process.env.GITHUB_REPOSITORY = ''
+    github.context.payload.repository = undefined
 
     await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
       'Could not find Repository.'
@@ -75,7 +75,7 @@ describe('config.resolvePublishActionOptions', () => {
 
   it('throws an error when the apiBaseUrl is not provided', async () => {
     getInputMock.mockReturnValueOnce('token')
-    process.env.GITHUB_API_URL = ''
+    github.context.apiUrl = ''
 
     await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
       'Could not find GITHUB_API_URL.'
@@ -93,7 +93,7 @@ describe('config.resolvePublishActionOptions', () => {
 
   it('throws an error when the sha is not provided', async () => {
     getInputMock.mockReturnValueOnce('token')
-    process.env.GITHUB_SHA = ''
+    github.context.sha = ''
 
     await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
       'Could not find GITHUB_SHA.'
@@ -102,7 +102,7 @@ describe('config.resolvePublishActionOptions', () => {
 
   it('throws an error when the githubServerUrl is not provided', async () => {
     getInputMock.mockReturnValueOnce('token')
-    process.env.GITHUB_SERVER_URL = ''
+    github.context.serverUrl = ''
 
     await expect(cfg.resolvePublishActionOptions()).rejects.toThrow(
       'Could not find GITHUB_SERVER_URL.'
@@ -235,7 +235,7 @@ describe('config.resolvePublishActionOptions', () => {
       ownerId: 'repositoryOwnerId'
     })
 
-    process.env.GITHUB_SERVER_URL = 'https://github-enterprise.com'
+    github.context.serverUrl = 'https://github-enterprise.com'
 
     const options = await cfg.resolvePublishActionOptions()
 
@@ -296,27 +296,36 @@ describe('config.serializeOptions', () => {
 })
 
 function configureEventContext(): void {
-  process.env.GITHUB_REF = 'ref'
-  process.env.GITHUB_WORKSPACE = 'workspaceDir'
-  process.env.GITHUB_REPOSITORY = 'nameWithOwner'
-  process.env.GITHUB_API_URL = 'apiBaseUrl'
+  github.context.ref = 'ref'
+  github.context.eventName = 'release'
+  github.context.apiUrl = 'apiBaseUrl'
+  github.context.sha = 'sha'
+  github.context.serverUrl = 'https://github.com/'
+  github.context.payload = {
+    repository: {
+      full_name: 'nameWithOwner',
+      name: 'name',
+      owner: {
+        login: 'owner'
+      }
+    }
+  }
+
   process.env.RUNNER_TEMP = 'runnerTempDir'
-  process.env.GITHUB_SHA = 'sha'
-  process.env.GITHUB_SERVER_URL = 'https://github.com/'
+  process.env.GITHUB_WORKSPACE = 'workspaceDir'
   process.env.GITHUB_REPOSITORY_ID = 'repositoryId'
   process.env.GITHUB_REPOSITORY_OWNER_ID = 'repositoryOwnerId'
-  github.context.eventName = 'release'
 }
 
 function clearEventContext(): void {
-  process.env.GITHUB_REF = ''
-  process.env.GITHUB_WORKSPACE = ''
-  process.env.GITHUB_REPOSITORY = ''
-  process.env.GITHUB_API_URL = ''
+  github.context.ref = ''
+  github.context.eventName = ''
+  github.context.apiUrl = ''
+  github.context.sha = ''
+  github.context.serverUrl = ''
+  github.context.payload = {}
   process.env.RUNNER_TEMP = ''
-  process.env.GITHUB_SHA = ''
-  process.env.GITHUB_SERVER_URL = ''
+  process.env.GITHUB_WORKSPACE = ''
   process.env.GITHUB_REPOSITORY_ID = ''
   process.env.GITHUB_REPOSITORY_OWNER_ID = ''
-  github.context.eventName = ''
 }

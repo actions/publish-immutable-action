@@ -256,18 +256,32 @@ describe('ensureCorrectShaCheckedOut', () => {
   it('throws an error if the correct SHA is not checked out', async () => {
     await expect(
       fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit1, dir)
-    ).rejects.toThrow()
+    ).rejects.toThrow(
+      'The expected commit associated with the tag refs/tags/tag1 is not checked out.'
+    )
+  })
+
+  it('throws if there is an issue getting sha for tag', async () => {
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(
+        `refs/tags/some-unknown-tag`,
+        commit2,
+        dir
+      )
+    ).rejects.toThrow('Error retrieving commit associated with tag')
   })
 
   it('throws an error if the sha of the tag does not match expected sha', async () => {
     await expect(async () =>
       fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag1}`, commit2, dir)
-    ).rejects.toThrow()
+    ).rejects.toThrow(
+      'The commit associated with the tag refs/tags/tag1 does not match the SHA of the commit provided by the actions context.'
+    )
   })
 
   it('throws if the provided ref is not a tag ref', async () => {
     await expect(async () =>
       fsHelper.ensureTagAndRefCheckedOut(`refs/heads/main`, commit2, dir)
-    ).rejects.toThrow()
+    ).rejects.toThrow('Tag ref provided is not in expected format.')
   })
 })
