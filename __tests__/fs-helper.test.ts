@@ -230,6 +230,10 @@ describe('ensureCorrectShaCheckedOut', () => {
     execSync('git config user.email monalisa@github.com', { cwd: dir })
     execSync('git config user.name Mona', { cwd: dir })
 
+    // Add a file to the repo
+    fs.writeFileSync(`${dir}/file1.txt`, fileContent)
+    execSync('git add .', { cwd: dir })
+
     // Add two commits
     execSync('git commit --allow-empty -m "test"', { cwd: dir })
     execSync('git commit --allow-empty -m "test"', { cwd: dir })
@@ -283,5 +287,28 @@ describe('ensureCorrectShaCheckedOut', () => {
     await expect(async () =>
       fsHelper.ensureTagAndRefCheckedOut(`refs/heads/main`, commit2, dir)
     ).rejects.toThrow('Tag ref provided is not in expected format.')
+  })
+
+  it('throws if there are untracked files in the working directory', async () => {
+    // Add an untracked file
+    fs.writeFileSync(`${dir}/untracked-file.txt`, fileContent)
+
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag2}`, commit2, dir)
+    ).rejects.toThrow(
+      'The working directory has uncommitted changes. Uploading modified code from the checked out repository is not supported by this action.'
+    )
+  })
+
+  it('throws if there are uncommitted changes in the working directory', async () => {
+    // Add an untracked file
+    fs.writeFileSync(`${dir}/file1.txt`, fileContent + fileContent)
+    execSync('git add .', { cwd: dir })
+
+    await expect(async () =>
+      fsHelper.ensureTagAndRefCheckedOut(`refs/tags/${tag2}`, commit2, dir)
+    ).rejects.toThrow(
+      'The working directory has uncommitted changes. Uploading modified code from the checked out repository is not supported by this action.'
+    )
   })
 })

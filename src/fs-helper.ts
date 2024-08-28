@@ -153,6 +153,21 @@ export async function ensureTagAndRefCheckedOut(
       `The expected commit associated with the tag ${tagRef} is not checked out.`
     )
   }
+
+  // Call git status to check for any changes in the working directory
+  // This version of this action only supports uploading actions packages
+  // which contain the same content as the repository at the appropriate source commit.
+  let status: simpleGit.StatusResult
+  try {
+    status = await git.status()
+  } catch (err) {
+    throw new Error(`Error checking git status: ${err}`)
+  }
+  if (!status.isClean()) {
+    throw new Error(
+      `The working directory has uncommitted changes. Uploading modified code from the checked out repository is not supported by this action.`
+    )
+  }
 }
 
 // Converts a file path to a filemetadata object by querying the fs for relevant metadata.
