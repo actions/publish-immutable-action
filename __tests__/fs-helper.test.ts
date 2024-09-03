@@ -30,7 +30,7 @@ describe('stageActionFiles', () => {
     )
   })
 
-  it('copies all non-hidden files to the staging directory', () => {
+  it('copies all files (excluding the .git folder) to the staging directory', () => {
     fs.writeFileSync(`${sourceDir}/action.yml`, fileContent)
 
     fs.mkdirSync(`${sourceDir}/.git`)
@@ -44,12 +44,14 @@ describe('stageActionFiles', () => {
     expect(fs.existsSync(`${stagingDir}/src/main.js`)).toBe(true)
     expect(fs.existsSync(`${stagingDir}/src/other.js`)).toBe(true)
 
-    // Hidden files should not be copied
+    // Hidden files are copied
+    expect(fs.existsSync(`${stagingDir}/.github`)).toBe(true)
+
+    // .git folder is not copied
     expect(fs.existsSync(`${stagingDir}/.git`)).toBe(false)
-    expect(fs.existsSync(`${stagingDir}/.github`)).toBe(false)
   })
 
-  it('copies all non-hidden files to the staging directory, even if action.yml is in a subdirectory', () => {
+  it('copies all files (excluding the .git folder) to the staging directory, even if action.yml is in a subdirectory', () => {
     fs.mkdirSync(`${sourceDir}/my-sub-action`, { recursive: true })
     fs.writeFileSync(`${sourceDir}/my-sub-action/action.yml`, fileContent)
 
