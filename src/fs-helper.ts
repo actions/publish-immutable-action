@@ -90,7 +90,7 @@ export function readFileContents(filePath: string): Buffer {
   return fs.readFileSync(filePath)
 }
 
-// Copy actions files from sourceDir to targetDir, excluding files and folders not relevant to the action
+// Copy actions files from sourceDir to targetDir, excluding the .git folder.
 // Errors if the repo appears to not contain any action files, such as an action.yml file
 export function stageActionFiles(actionDir: string, targetDir: string): void {
   let actionYmlFound = false
@@ -103,8 +103,12 @@ export function stageActionFiles(actionDir: string, targetDir: string): void {
         actionYmlFound = true
       }
 
-      // Filter out hidden folers like .git and .github
-      return basename === '.' || !basename.startsWith('.')
+      // Filter out the .git folder.
+      if (basename === '.git') {
+        return false
+      }
+
+      return true
     }
   })
 
