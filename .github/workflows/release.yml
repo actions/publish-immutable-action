@@ -1,10 +1,11 @@
-# Package and publish the action when a new release is created
+# Package and publish the action when a new release is published
 # Since this is the publishing action itself, we can use the current checkout as the action
 name: 'Publish Immutable Action Version'
 on:
   release:
-    types: [created]
+    types: [published]
 permissions:
+  contents: read
   id-token: write
   packages: write
 jobs:
