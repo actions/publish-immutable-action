@@ -91,17 +91,10 @@ export function readFileContents(filePath: string): Buffer {
 }
 
 // Copy actions files from sourceDir to targetDir, excluding the .git folder.
-// Errors if the repo appears to not contain any action files, such as an action.yml file
 export function stageActionFiles(actionDir: string, targetDir: string): void {
-  let actionYmlFound = false
-
   fsExtra.copySync(actionDir, targetDir, {
     filter: (src: string) => {
       const basename = path.basename(src)
-
-      if (basename === 'action.yml' || basename === 'action.yaml') {
-        actionYmlFound = true
-      }
 
       // Filter out the .git folder.
       if (basename === '.git') {
@@ -111,12 +104,6 @@ export function stageActionFiles(actionDir: string, targetDir: string): void {
       return true
     }
   })
-
-  if (!actionYmlFound) {
-    throw new Error(
-      `No action.yml or action.yaml file found in source repository`
-    )
-  }
 }
 
 // Ensure the correct SHA is checked out for the tag by inspecting the git metadata in the workspace
