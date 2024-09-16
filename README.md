@@ -37,7 +37,7 @@ name: "Publish Immutable Action Version"
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   publish:
