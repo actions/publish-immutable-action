@@ -15,5 +15,3 @@ jobs:
         uses: actions/checkout@v4
       - name: Publish Immutable Action Version
         uses: ./
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -9,6 +9,7 @@ branding:
 inputs:
   github-token:
     description: 'The GitHub actions token used to authenticate with GitHub APIs'
+    default: ${{ github.token }}
 
 outputs:
   package-manifest-sha:
