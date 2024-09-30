@@ -2,15 +2,14 @@ name: CodeQL
 
 on:
   workflow_dispatch:
-  # Disable until this is a public repo since advanced security is not enabled
-  # push:
-  #   branches:
-  #     - main
-  # pull_request:
-  #   branches:
-  #     - main
-  # schedule:
-  #   - cron: '31 7 * * 3'
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '31 7 * * 3'
 
 permissions:
     actions: read
