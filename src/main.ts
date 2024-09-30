@@ -151,7 +151,7 @@ async function publishImmutableActionVersion(
   const manifestDigest = ociContainer.sha256Digest(manifest)
 
   core.info(
-    `Creating GHCR package ${manifestDigest} for release with semver: ${semver}.`
+    `Creating GHCR package ${manifestDigest} for release with semver: ${semverTag}.`
   )
 
   const files = new Map<string, Buffer>()

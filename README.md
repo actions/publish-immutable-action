@@ -37,7 +37,7 @@ name: "Publish Immutable Action Version"
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   publish:
@@ -51,9 +51,7 @@ jobs:
       uses: actions/checkout@v4
     - name: Publish
       id: publish
-      uses: actions/publish-immutable-action@0.0.1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/publish-immutable-action@0.0.3
 ```
 <!-- end usage -->
 

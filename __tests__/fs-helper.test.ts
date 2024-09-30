@@ -24,13 +24,7 @@ describe('stageActionFiles', () => {
     fs.rmSync(stagingDir, { recursive: true })
   })
 
-  it('returns an error if no action.yml file is present', () => {
-    expect(() => fsHelper.stageActionFiles(sourceDir, stagingDir)).toThrow(
-      /^No action.yml or action.yaml file found in source repository/
-    )
-  })
-
-  it('copies all non-hidden files to the staging directory', () => {
+  it('copies all files (excluding the .git folder) to the staging directory', () => {
     fs.writeFileSync(`${sourceDir}/action.yml`, fileContent)
 
     fs.mkdirSync(`${sourceDir}/.git`)
@@ -44,26 +38,11 @@ describe('stageActionFiles', () => {
     expect(fs.existsSync(`${stagingDir}/src/main.js`)).toBe(true)
     expect(fs.existsSync(`${stagingDir}/src/other.js`)).toBe(true)
 
-    // Hidden files should not be copied
+    // Hidden files are copied
+    expect(fs.existsSync(`${stagingDir}/.github`)).toBe(true)
+
+    // .git folder is not copied
     expect(fs.existsSync(`${stagingDir}/.git`)).toBe(false)
-    expect(fs.existsSync(`${stagingDir}/.github`)).toBe(false)
-  })
-
-  it('copies all non-hidden files to the staging directory, even if action.yml is in a subdirectory', () => {
-    fs.mkdirSync(`${sourceDir}/my-sub-action`, { recursive: true })
-    fs.writeFileSync(`${sourceDir}/my-sub-action/action.yml`, fileContent)
-
-    fsHelper.stageActionFiles(sourceDir, stagingDir)
-    expect(fs.existsSync(`${stagingDir}/src/main.js`)).toBe(true)
-    expect(fs.existsSync(`${stagingDir}/src/other.js`)).toBe(true)
-    expect(fs.existsSync(`${stagingDir}/my-sub-action/action.yml`)).toBe(true)
-  })
-
-  it('accepts action.yaml as a valid action file as well as action.yml', () => {
-    fs.writeFileSync(`${sourceDir}/action.yaml`, fileContent)
-
-    fsHelper.stageActionFiles(sourceDir, stagingDir)
-    expect(fs.existsSync(`${stagingDir}/action.yaml`)).toBe(true)
   })
 })
 
