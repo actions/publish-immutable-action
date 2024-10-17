@@ -59,3 +59,4 @@ jobs:
         with:
           name: dist
           path: dist/
+[![Check dist/](https://github.com/actions/publish-immutable-action/actions/workflows/check-dist.yml/badge.svg)](https://github.com/actions/publish-immutable-action/actions/workflows/check-dist.yml)
