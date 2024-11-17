@@ -171,7 +171,7 @@ function configureFetchMock(
     putManifest: 0
   }
 ): void {
-  const retriableError = async (retries: number): Promise<object> => {
+  const retryableError = async (retries: number): Promise<object> => {
     if (retries % 2 === 0) {
       throw new Error('Network Error')
     } else {
@@ -198,14 +198,14 @@ function configureFetchMock(
         case 'HEAD':
           if (forcedRetries.checkBlob > 0) {
             forcedRetries.checkBlob--
-            return retriableError(forcedRetries.checkBlob)
+            return retryableError(forcedRetries.checkBlob)
           }
 
           return methodHandlers.checkBlobMock?.(url, options)
         case 'POST':
           if (forcedRetries.initiateBlobUpload > 0) {
             forcedRetries.initiateBlobUpload--
-            return retriableError(forcedRetries.initiateBlobUpload)
+            return retryableError(forcedRetries.initiateBlobUpload)
           }
 
           return methodHandlers.initiateBlobUploadMock?.(url, options)
@@ -213,14 +213,14 @@ function configureFetchMock(
           if (url.includes('manifest')) {
             if (forcedRetries.putManifest > 0) {
               forcedRetries.putManifest--
-              return retriableError(forcedRetries.putManifest)
+              return retryableError(forcedRetries.putManifest)
             }
 
             return methodHandlers.putManifestMock?.(url, options)
           } else {
             if (forcedRetries.putBlob > 0) {
               forcedRetries.putBlob--
-              return retriableError(forcedRetries.putBlob)
+              return retryableError(forcedRetries.putBlob)
             }
 
             return methodHandlers.putBlobMock?.(url, options)
