@@ -20,5 +20,5 @@ outputs:
     description: 'The sha256 of the referrer index uploaded to GHCR. This is not present if the package is not attested, e.g. in enterprise environments.'
 
 runs:
-  using: node20
+  using: node24
   main: dist/index.js

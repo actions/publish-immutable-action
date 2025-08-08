@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "author": "",
   "private": true,
+  "engines": {
+    "node": ">=24"
+  },
   "homepage": "https://github.com/actions/typescript-action",
   "repository": {
     "type": "git",
@@ -19,9 +22,6 @@
   ],
   "exports": {
     ".": "./dist/index.js"
-  },
-  "engines": {
-    "node": ">=20"
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
@@ -83,7 +83,7 @@
     "@types/axios": "^0.14.0",
     "@types/jest": "^29.5.12",
     "@types/minimist": "^1.2.5",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.1.0",
     "@types/tar": "^6.1.13",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
