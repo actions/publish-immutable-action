@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "author": "",
   "private": true,
+    "engines": {
+    "node": ">=24"
+  },
   "homepage": "https://github.com/actions/typescript-action",
   "repository": {
     "type": "git",
@@ -21,7 +24,7 @@
     ".": "./dist/index.js"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
