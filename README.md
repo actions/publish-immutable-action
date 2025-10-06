@@ -51,7 +51,7 @@ jobs:
       uses: actions/checkout@v4
     - name: Publish
       id: publish
-      uses: actions/publish-immutable-action@0.0.3
+      uses: actions/publish-immutable-action@v0.0.4
 ```
 <!-- end usage -->
 
